@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Character, CharacterInput, PostingTone } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +36,45 @@ export function CharacterForm({ initialCharacter }: CharacterFormProps) {
   const [form, setForm] = useState<CharacterInput>(initialCharacter ?? defaultValues);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingReference, setUploadingReference] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function updateField<K extends keyof CharacterInput>(key: K, value: CharacterInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function handleReferenceUpload(file: File) {
+    setError(null);
+    setMessage(null);
+    setUploadingReference(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload-reference", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json()) as { url?: string; error?: string };
+
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error || "Unable to upload reference image.");
+      }
+
+      updateField("masterReferenceImageUrl", payload.url);
+      setMessage("Reference image uploaded and URL filled in.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload image.");
+    } finally {
+      setUploadingReference(false);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -163,12 +198,40 @@ export function CharacterForm({ initialCharacter }: CharacterFormProps) {
         />
       </Field>
       <Field label="Master reference image URL">
-        <input
-          value={form.masterReferenceImageUrl}
-          onChange={(event) => updateField("masterReferenceImageUrl", event.target.value)}
-          className={inputClassName}
-          placeholder="https://..."
-        />
+        <div className="space-y-3">
+          <input
+            value={form.masterReferenceImageUrl}
+            onChange={(event) => updateField("masterReferenceImageUrl", event.target.value)}
+            className={inputClassName}
+            placeholder="https://..."
+          />
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                if (file) {
+                  void handleReferenceUpload(file);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingReference}
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {uploadingReference ? "Uploading..." : "Upload reference photo"}
+            </button>
+            <p className="text-xs text-zinc-400">
+              Upload one portrait or lifestyle reference image to store it in Supabase Storage.
+            </p>
+          </div>
+        </div>
       </Field>
       <Field label="Style prompt">
         <textarea

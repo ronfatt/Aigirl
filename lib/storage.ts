@@ -24,6 +24,37 @@ function getSupabaseStorageClient() {
   return supabaseAdmin;
 }
 
+async function resolveStoredAssetUrl(filePath: string) {
+  const client = getSupabaseStorageClient();
+  const { data } = client.storage.from(storageBucket).getPublicUrl(filePath);
+  const publicUrl = data.publicUrl;
+
+  if (publicUrl) {
+    try {
+      const response = await fetch(publicUrl, {
+        method: "HEAD",
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        return publicUrl;
+      }
+    } catch {
+      // Fall back to a signed URL when the public URL is not reachable.
+    }
+  }
+
+  // Signed URLs help preview private buckets, but production publishing flows
+  // still work best when the bucket is public because Meta must fetch the asset.
+  const signed = await client.storage.from(storageBucket).createSignedUrl(filePath, 60 * 60 * 24 * 30);
+
+  if (signed.error || !signed.data.signedUrl) {
+    throw signed.error || new Error("Supabase Storage did not return an accessible URL.");
+  }
+
+  return signed.data.signedUrl;
+}
+
 export async function storeGeneratedImage(input: { url: string; filename: string }) {
   if (!storageEnabled) {
     return {
@@ -59,14 +90,8 @@ export async function storeGeneratedImage(input: { url: string; filename: string
       throw upload.error;
     }
 
-    const { data } = client.storage.from(storageBucket).getPublicUrl(filePath);
-
-    if (!data.publicUrl) {
-      throw new Error("Supabase Storage did not return a public URL.");
-    }
-
     return {
-      url: data.publicUrl,
+      url: await resolveStoredAssetUrl(filePath),
       provider: "supabase-storage",
     };
   } catch (error) {
@@ -77,4 +102,37 @@ export async function storeGeneratedImage(input: { url: string; filename: string
       provider: "mock",
     };
   }
+}
+
+export async function storeReferenceImage(input: {
+  bytes: ArrayBuffer;
+  filename: string;
+  contentType?: string;
+}) {
+  if (!storageEnabled) {
+    throw new Error("Supabase Storage is not configured.");
+  }
+
+  const client = getSupabaseStorageClient();
+  const extension = input.filename.includes(".") ? "" : ".jpg";
+  const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const filePath = `references/${new Date().toISOString().slice(0, 10)}/${safeName}${extension}`;
+
+  // Production hardening still needed:
+  // - enforce stricter file size limits and MIME allowlist
+  // - run image sanitization / resizing before upload
+  // - use auth checks so only authorized users can upload references
+  const upload = await client.storage.from(storageBucket).upload(filePath, input.bytes, {
+    contentType: input.contentType || "image/jpeg",
+    upsert: true,
+  });
+
+  if (upload.error) {
+    throw upload.error;
+  }
+
+  return {
+    url: await resolveStoredAssetUrl(filePath),
+    provider: "supabase-storage" as const,
+  };
 }

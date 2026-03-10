@@ -77,6 +77,14 @@ export interface DashboardPayload {
   recentPosts: Array<Post & { characterName: string; imageUrl: string | null }>;
 }
 
+export interface GenerationHistoryItem extends Generation {
+  characterName: string;
+  sceneTitle: string;
+  previewImageUrl: string | null;
+  linkedPostId: string | null;
+  linkedPostStatus: PostStatus | null;
+}
+
 export interface CharacterInput {
   name: string;
   displayName: string;

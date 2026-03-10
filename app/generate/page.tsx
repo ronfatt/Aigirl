@@ -2,17 +2,21 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState, useTransition } from "react";
+import Image from "next/image";
+import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
 import { ImageGrid } from "@/components/ImageGrid";
 import { LoadingState } from "@/components/LoadingState";
 import { PromptPreview } from "@/components/PromptPreview";
 import { SceneSelector } from "@/components/SceneSelector";
 import { sceneLibrary } from "@/lib/scene-library";
-import { Character, Generation } from "@/lib/types";
+import { Character, Generation, GenerationHistoryItem } from "@/lib/types";
 import { composeImagePrompt } from "@/lib/prompts";
+import { formatDate } from "@/lib/utils";
 
 export default function GeneratePage() {
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [history, setHistory] = useState<GenerationHistoryItem[]>([]);
   const [characterId, setCharacterId] = useState("");
   const [sceneId, setSceneId] = useState(sceneLibrary[0]?.id ?? "");
   const [customPrompt, setCustomPrompt] = useState("");
@@ -25,33 +29,53 @@ export default function GeneratePage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     let active = true;
 
-    async function loadCharacters() {
+    async function loadPageData() {
       try {
-        const response = await fetch("/api/characters");
-        const payload = await response.json();
-        const nextCharacters = payload.characters as Character[];
+        const [charactersResponse, historyResponse] = await Promise.all([
+          fetch("/api/characters"),
+          fetch("/api/generations"),
+        ]);
+
+        if (!charactersResponse.ok) {
+          throw new Error("Unable to load characters.");
+        }
+
+        if (!historyResponse.ok) {
+          throw new Error("Unable to load generation history.");
+        }
+
+        const charactersPayload = (await charactersResponse.json()) as { characters: Character[] };
+        const historyPayload = (await historyResponse.json()) as { generations: GenerationHistoryItem[] };
+        const nextCharacters = charactersPayload.characters;
 
         if (!active) {
           return;
         }
 
         setCharacters(nextCharacters);
+        setHistory(historyPayload.generations);
         setCharacterId(
           nextCharacters.find((item) => item.isActive)?.id ?? nextCharacters[0]?.id ?? "",
         );
+      } catch (loadError) {
+        if (active) {
+          setError(loadError instanceof Error ? loadError.message : "Unable to load page.");
+        }
       } finally {
         if (active) {
           setLoadingCharacters(false);
+          setLoadingHistory(false);
         }
       }
     }
 
-    void loadCharacters();
+    void loadPageData();
 
     return () => {
       active = false;
@@ -68,6 +92,17 @@ export default function GeneratePage() {
           customPrompt,
         })
       : "Select an active character to preview the prompt.";
+
+  async function refreshHistory() {
+    const response = await fetch("/api/generations");
+
+    if (!response.ok) {
+      throw new Error("Unable to load generation history.");
+    }
+
+    const payload = (await response.json()) as { generations: GenerationHistoryItem[] };
+    setHistory(payload.generations);
+  }
 
   async function handleGenerate() {
     setError(null);
@@ -100,6 +135,7 @@ export default function GeneratePage() {
         const payload = await response.json();
         setGeneration(payload.generation);
         setSelectedImage(payload.generation.selectedImageUrl);
+        await refreshHistory();
       } catch (generationError) {
         setError(generationError instanceof Error ? generationError.message : "Generation failed.");
       }
@@ -133,6 +169,7 @@ export default function GeneratePage() {
       setDraftPostId(payload.draftPost?.id ?? null);
       setCaptionOptions(payload.draftPost?.captionOptions ?? []);
       setSelectedCaption(payload.draftPost?.caption ?? null);
+      await refreshHistory();
       setSuccessMessage(
         payload.draftPost?.id
           ? `Approved image saved. Draft post created: ${payload.draftPost.id}`
@@ -166,6 +203,7 @@ export default function GeneratePage() {
       }
 
       setSuccessMessage("Selected caption saved to draft post.");
+      await refreshHistory();
     } catch (captionError) {
       setError(captionError instanceof Error ? captionError.message : "Unable to save caption.");
     }
@@ -307,6 +345,84 @@ export default function GeneratePage() {
           </div>
         </div>
       ) : null}
+
+      <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Generation history</h3>
+            <p className="text-sm text-zinc-400">
+              Past generations stay in history so you can recover photos and linked post records later.
+            </p>
+          </div>
+          <p className="text-sm text-zinc-500">{history.length} records</p>
+        </div>
+
+        {loadingHistory ? <LoadingState label="Loading history" /> : null}
+
+        {!loadingHistory && !history.length ? (
+          <EmptyState
+            title="No generation history yet"
+            description="Generate your first image set and it will stay available here."
+          />
+        ) : null}
+
+        {!loadingHistory && history.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {history.map((item) => {
+              const active = generation?.id === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setGeneration(item);
+                    setSelectedImage(item.selectedImageUrl);
+                    setDraftPostId(item.linkedPostId);
+                    setCaptionOptions([]);
+                    setSelectedCaption(null);
+                    setSuccessMessage(null);
+                    setError(null);
+                  }}
+                  className={`overflow-hidden rounded-[1.4rem] border text-left transition ${
+                    active
+                      ? "border-white bg-white/[0.06]"
+                      : "border-white/10 bg-black/10 hover:border-white/20"
+                  }`}
+                >
+                  <div className="relative h-52 bg-white/5">
+                    {item.previewImageUrl ? (
+                      <Image
+                        src={item.previewImageUrl}
+                        alt={item.characterName}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white">{item.characterName}</p>
+                        <p className="text-sm text-zinc-400">{item.sceneTitle}</p>
+                      </div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{item.status}</p>
+                    </div>
+                    <p className="text-xs text-zinc-500">{formatDate(item.createdAt)}</p>
+                    <p className="text-sm text-zinc-400">
+                      Post: {item.linkedPostId ? `${item.linkedPostId} • ${item.linkedPostStatus}` : "Not created yet"}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
