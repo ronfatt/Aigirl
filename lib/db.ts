@@ -71,6 +71,7 @@ const now = () => new Date().toISOString();
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const READ_TIMEOUT_MS = 8000;
 const WRITE_TIMEOUT_MS = 12000;
+const WORKFLOW_TIMEOUT_MS = 20000;
 
 function createSeedState(): DatabaseState {
   const timestamp = now();
@@ -157,11 +158,24 @@ function writeTimeoutError(label: string) {
   return new Error(`${label} timed out after ${WRITE_TIMEOUT_MS}ms.`);
 }
 
+function workflowTimeoutError(label: string) {
+  return new Error(`${label} timed out after ${WORKFLOW_TIMEOUT_MS}ms.`);
+}
+
 async function withWriteTimeout<T>(label: string, write: () => Promise<T>) {
   return Promise.race([
     write(),
     new Promise<T>((_, reject) => {
       setTimeout(() => reject(writeTimeoutError(label)), WRITE_TIMEOUT_MS);
+    }),
+  ]);
+}
+
+async function withWorkflowTimeout<T>(label: string, work: () => Promise<T>) {
+  return Promise.race([
+    work(),
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(workflowTimeoutError(label)), WORKFLOW_TIMEOUT_MS);
     }),
   ]);
 }
@@ -799,7 +813,11 @@ async function insertGenerationRecord(input: {
 }
 
 export async function createGeneration(input: GenerateImageInput) {
-  const character = await getCharacter(input.characterId);
+  const character = hasDatabaseUrl
+    ? await withWorkflowTimeout("createGeneration.getCharacter", () =>
+        getCharacterFromDb(input.characterId),
+      )
+    : await getCharacter(input.characterId);
   const scene = sceneLibrary.find((item) => item.id === input.sceneTemplateId);
 
   if (!character || !scene) {
@@ -845,7 +863,11 @@ export async function createGeneration(input: GenerateImageInput) {
 }
 
 export async function createCaption(input: CaptionInput) {
-  const character = await getCharacter(input.characterId);
+  const character = hasDatabaseUrl
+    ? await withWorkflowTimeout("createCaption.getCharacter", () =>
+        getCharacterFromDb(input.characterId),
+      )
+    : await getCharacter(input.characterId);
   const generation = hasDatabaseUrl
     ? (await listGenerationsFromDb()).find((item) => item.id === input.generationId)
     : getMemoryState().generations.find((item) => item.id === input.generationId);
@@ -964,14 +986,19 @@ export async function selectGenerationImage(generationId: string, imageUrl: stri
   }
 
   const character = await getCharacter(generation.characterId);
+  const resolvedCharacter = hasDatabaseUrl
+    ? await withWorkflowTimeout("selectGenerationImage.getCharacter", () =>
+        getCharacterFromDb(generation.characterId),
+      )
+    : character;
   const scene = sceneLibrary.find((item) => item.id === generation.sceneTemplateId);
 
-  if (!character || !scene) {
+  if (!resolvedCharacter || !scene) {
     throw new Error("Unable to create draft post for this generation.");
   }
 
   const captionResult = await generateCaptionOptions({
-    character,
+    character: resolvedCharacter,
     scene,
   });
 
@@ -992,7 +1019,7 @@ export async function selectGenerationImage(generationId: string, imageUrl: stri
       updated_at
     ) values (
       ${makeId("post")},
-      ${character.id},
+      ${resolvedCharacter.id},
       ${generation.id},
       ${"instagram"},
       ${captionResult.options[0] ?? ""},
