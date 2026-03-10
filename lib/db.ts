@@ -70,6 +70,7 @@ declare global {
 const now = () => new Date().toISOString();
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const READ_TIMEOUT_MS = 2500;
+const WRITE_TIMEOUT_MS = 5000;
 
 function createSeedState(): DatabaseState {
   const timestamp = now();
@@ -152,6 +153,10 @@ function timeoutError(label: string) {
   return new Error(`${label} timed out after ${READ_TIMEOUT_MS}ms.`);
 }
 
+function writeTimeoutError(label: string) {
+  return new Error(`${label} timed out after ${WRITE_TIMEOUT_MS}ms.`);
+}
+
 async function withReadFallback<T>(label: string, read: () => Promise<T>, fallback: () => T) {
   if (!hasDatabaseUrl) {
     return fallback();
@@ -168,6 +173,15 @@ async function withReadFallback<T>(label: string, read: () => Promise<T>, fallba
     console.error(`${label} failed, using fallback data.`, error);
     return fallback();
   }
+}
+
+async function withWriteTimeout<T>(label: string, write: () => Promise<T>) {
+  return Promise.race([
+    write(),
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(writeTimeoutError(label)), WRITE_TIMEOUT_MS);
+    }),
+  ]);
 }
 
 function normalizeDate(value: string | Date | null | undefined) {
@@ -517,58 +531,61 @@ export async function createCharacter(input: CharacterInput) {
   }
 
   const sql = requireSql();
-  await ensureDatabaseReady();
   const id = makeId("char");
-  const rows = await sql<DbCharacterRow[]>`
-    insert into characters (
-      id,
-      name,
-      display_name,
-      age_range,
-      identity_style,
-      city,
-      bio,
-      vibe,
-      appearance_description,
-      master_reference_image_url,
-      style_prompt,
-      negative_prompt,
-      posting_tone,
-      is_active
-    ) values (
-      ${id},
-      ${input.name},
-      ${input.displayName},
-      ${input.ageRange},
-      ${input.identityStyle},
-      ${input.city},
-      ${input.bio},
-      ${input.vibe},
-      ${input.appearanceDescription},
-      ${input.masterReferenceImageUrl},
-      ${input.stylePrompt},
-      ${input.negativePrompt},
-      ${input.postingTone},
-      ${input.isActive}
-    )
-    returning
-      id,
-      name,
-      display_name as "displayName",
-      age_range as "ageRange",
-      identity_style as "identityStyle",
-      city,
-      bio,
-      vibe,
-      appearance_description as "appearanceDescription",
-      master_reference_image_url as "masterReferenceImageUrl",
-      style_prompt as "stylePrompt",
-      negative_prompt as "negativePrompt",
-      posting_tone as "postingTone",
-      is_active,
-      created_at as "createdAt",
-      updated_at as "updatedAt"
-  `;
+  const rows = await withWriteTimeout("createCharacter", async () => {
+    await ensureDatabaseReady();
+
+    return sql<DbCharacterRow[]>`
+      insert into characters (
+        id,
+        name,
+        display_name,
+        age_range,
+        identity_style,
+        city,
+        bio,
+        vibe,
+        appearance_description,
+        master_reference_image_url,
+        style_prompt,
+        negative_prompt,
+        posting_tone,
+        is_active
+      ) values (
+        ${id},
+        ${input.name},
+        ${input.displayName},
+        ${input.ageRange},
+        ${input.identityStyle},
+        ${input.city},
+        ${input.bio},
+        ${input.vibe},
+        ${input.appearanceDescription},
+        ${input.masterReferenceImageUrl},
+        ${input.stylePrompt},
+        ${input.negativePrompt},
+        ${input.postingTone},
+        ${input.isActive}
+      )
+      returning
+        id,
+        name,
+        display_name as "displayName",
+        age_range as "ageRange",
+        identity_style as "identityStyle",
+        city,
+        bio,
+        vibe,
+        appearance_description as "appearanceDescription",
+        master_reference_image_url as "masterReferenceImageUrl",
+        style_prompt as "stylePrompt",
+        negative_prompt as "negativePrompt",
+        posting_tone as "postingTone",
+        is_active,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+    `;
+  });
 
   return mapCharacterRow(rows[0]);
 }
@@ -591,7 +608,7 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
     return state.characters[index];
   }
 
-  const existing = await getCharacter(id);
+  const existing = await withWriteTimeout("updateCharacter.readCurrent", () => getCharacterFromDb(id));
 
   if (!existing) {
     return null;
@@ -603,42 +620,45 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
     updatedAt: now(),
   };
   const sql = requireSql();
-  await ensureDatabaseReady();
-  const rows = await sql<DbCharacterRow[]>`
-    update characters set
-      name = ${next.name},
-      display_name = ${next.displayName},
-      age_range = ${next.ageRange},
-      identity_style = ${next.identityStyle},
-      city = ${next.city},
-      bio = ${next.bio},
-      vibe = ${next.vibe},
-      appearance_description = ${next.appearanceDescription},
-      master_reference_image_url = ${next.masterReferenceImageUrl},
-      style_prompt = ${next.stylePrompt},
-      negative_prompt = ${next.negativePrompt},
-      posting_tone = ${next.postingTone},
-      is_active = ${next.isActive},
-      updated_at = ${next.updatedAt}
-    where id = ${id}
-    returning
-      id,
-      name,
-      display_name as "displayName",
-      age_range as "ageRange",
-      identity_style as "identityStyle",
-      city,
-      bio,
-      vibe,
-      appearance_description as "appearanceDescription",
-      master_reference_image_url as "masterReferenceImageUrl",
-      style_prompt as "stylePrompt",
-      negative_prompt as "negativePrompt",
-      posting_tone as "postingTone",
-      is_active,
-      created_at as "createdAt",
-      updated_at as "updatedAt"
-  `;
+  const rows = await withWriteTimeout("updateCharacter", async () => {
+    await ensureDatabaseReady();
+
+    return sql<DbCharacterRow[]>`
+      update characters set
+        name = ${next.name},
+        display_name = ${next.displayName},
+        age_range = ${next.ageRange},
+        identity_style = ${next.identityStyle},
+        city = ${next.city},
+        bio = ${next.bio},
+        vibe = ${next.vibe},
+        appearance_description = ${next.appearanceDescription},
+        master_reference_image_url = ${next.masterReferenceImageUrl},
+        style_prompt = ${next.stylePrompt},
+        negative_prompt = ${next.negativePrompt},
+        posting_tone = ${next.postingTone},
+        is_active = ${next.isActive},
+        updated_at = ${next.updatedAt}
+      where id = ${id}
+      returning
+        id,
+        name,
+        display_name as "displayName",
+        age_range as "ageRange",
+        identity_style as "identityStyle",
+        city,
+        bio,
+        vibe,
+        appearance_description as "appearanceDescription",
+        master_reference_image_url as "masterReferenceImageUrl",
+        style_prompt as "stylePrompt",
+        negative_prompt as "negativePrompt",
+        posting_tone as "postingTone",
+        is_active,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+    `;
+  });
 
   return mapCharacterRow(rows[0]);
 }

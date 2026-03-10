@@ -60,7 +60,22 @@ export default function CharacterPage() {
 
       {!loading ? (
         <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-          <CharacterForm initialCharacter={activeCharacter} />
+          <CharacterForm
+            initialCharacter={activeCharacter}
+            onSaved={(character) => {
+              setCharacters((current) => {
+                const index = current.findIndex((item) => item.id === character.id);
+
+                if (index === -1) {
+                  return [character, ...current];
+                }
+
+                const next = [...current];
+                next[index] = character;
+                return next;
+              });
+            }}
+          />
           {activeCharacter ? <CharacterCard character={activeCharacter} /> : null}
         </div>
       ) : null}

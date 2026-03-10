@@ -30,9 +30,10 @@ const defaultValues: CharacterInput = {
 
 interface CharacterFormProps {
   initialCharacter?: Character | null;
+  onSaved?: (character: Character) => void;
 }
 
-export function CharacterForm({ initialCharacter }: CharacterFormProps) {
+export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps) {
   const [form, setForm] = useState<CharacterInput>(initialCharacter ?? defaultValues);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,24 +90,51 @@ export function CharacterForm({ initialCharacter }: CharacterFormProps) {
         : "/api/characters";
 
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
         const response = await fetch(endpoint, {
           method,
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(form),
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
+
+        const payload = (await response.json()) as { error?: string; character?: Character };
 
         if (!response.ok) {
-          throw new Error("Unable to save character.");
+          throw new Error(payload.error || "Unable to save character.");
+        }
+
+        if (payload.character) {
+          setForm({
+            name: payload.character.name,
+            displayName: payload.character.displayName,
+            ageRange: payload.character.ageRange,
+            identityStyle: payload.character.identityStyle,
+            city: payload.character.city,
+            bio: payload.character.bio,
+            vibe: payload.character.vibe,
+            appearanceDescription: payload.character.appearanceDescription,
+            masterReferenceImageUrl: payload.character.masterReferenceImageUrl,
+            stylePrompt: payload.character.stylePrompt,
+            negativePrompt: payload.character.negativePrompt,
+            postingTone: payload.character.postingTone,
+            isActive: payload.character.isActive,
+          });
+          onSaved?.(payload.character);
         }
 
         setMessage(initialCharacter ? "Character updated." : "Character created.");
       } catch (submissionError) {
         setError(
-          submissionError instanceof Error
-            ? submissionError.message
-            : "Something went wrong while saving.",
+          submissionError instanceof DOMException && submissionError.name === "AbortError"
+            ? "Saving timed out. The database did not respond in time."
+            : submissionError instanceof Error
+              ? submissionError.message
+              : "Something went wrong while saving.",
         );
       }
     });
