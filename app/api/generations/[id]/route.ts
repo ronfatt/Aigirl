@@ -13,13 +13,13 @@ export async function PUT(
       return NextResponse.json({ error: "selectedImageUrl is required." }, { status: 400 });
     }
 
-    const generation = await selectGenerationImage(id, body.selectedImageUrl);
+    const result = await selectGenerationImage(id, body.selectedImageUrl);
 
-    if (!generation) {
+    if (!result) {
       return NextResponse.json({ error: "Generation not found." }, { status: 404 });
     }
 
-    return NextResponse.json({ generation });
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to update generation." },

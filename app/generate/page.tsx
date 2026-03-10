@@ -20,7 +20,10 @@ export default function GeneratePage() {
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [draftPostId, setDraftPostId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [captionOptions, setCaptionOptions] = useState<string[]>([]);
+  const [selectedCaption, setSelectedCaption] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loadingCharacters, setLoadingCharacters] = useState(true);
   const [isPending, startTransition] = useTransition();
 
@@ -68,6 +71,12 @@ export default function GeneratePage() {
 
   async function handleGenerate() {
     setError(null);
+    setSuccessMessage(null);
+    setDraftPostId(null);
+    setGeneration(null);
+    setSelectedImage(null);
+    setCaptionOptions([]);
+    setSelectedCaption(null);
 
     startTransition(async () => {
       try {
@@ -90,7 +99,6 @@ export default function GeneratePage() {
 
         const payload = await response.json();
         setGeneration(payload.generation);
-        setDraftPostId(payload.draftPost.id);
         setSelectedImage(payload.generation.selectedImageUrl);
       } catch (generationError) {
         setError(generationError instanceof Error ? generationError.message : "Generation failed.");
@@ -104,14 +112,63 @@ export default function GeneratePage() {
     }
 
     setSelectedImage(imageUrl);
+    setError(null);
+    setSuccessMessage(null);
 
-    await fetch(`/api/generations/${generation.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ selectedImageUrl: imageUrl }),
-    });
+    try {
+      const response = await fetch(`/api/generations/${generation.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ selectedImageUrl: imageUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to approve image.");
+      }
+
+      const payload = await response.json();
+      setGeneration(payload.generation);
+      setDraftPostId(payload.draftPost?.id ?? null);
+      setCaptionOptions(payload.draftPost?.captionOptions ?? []);
+      setSelectedCaption(payload.draftPost?.caption ?? null);
+      setSuccessMessage(
+        payload.draftPost?.id
+          ? `Approved image saved. Draft post created: ${payload.draftPost.id}`
+          : "Approved image saved.",
+      );
+    } catch (approvalError) {
+      setError(approvalError instanceof Error ? approvalError.message : "Unable to approve image.");
+    }
+  }
+
+  async function handleSelectCaption(caption: string) {
+    if (!draftPostId) {
+      return;
+    }
+
+    setSelectedCaption(caption);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch(`/api/posts/${draftPostId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ caption }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to save caption.");
+      }
+
+      setSuccessMessage("Selected caption saved to draft post.");
+    } catch (captionError) {
+      setError(captionError instanceof Error ? captionError.message : "Unable to save caption.");
+    }
   }
 
   if (loadingCharacters) {
@@ -184,9 +241,14 @@ export default function GeneratePage() {
               >
                 {isPending ? "Generating..." : "Generate Images"}
               </button>
-              {draftPostId ? <p className="text-sm text-zinc-400">Draft post created: {draftPostId}</p> : null}
+              {draftPostId ? (
+                <p className="text-sm text-zinc-400">Draft post created: {draftPostId}</p>
+              ) : (
+                <p className="text-sm text-zinc-500">Draft post will be created after approval.</p>
+              )}
             </div>
             {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
+            {successMessage ? <p className="mt-3 text-sm text-emerald-300">{successMessage}</p> : null}
           </div>
 
           <PromptPreview prompt={promptPreview} />
@@ -200,7 +262,9 @@ export default function GeneratePage() {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-white">Generated images</h3>
-              <p className="text-sm text-zinc-400">Select the approved image for downstream publishing.</p>
+              <p className="text-sm text-zinc-400">
+                Select the approved image to save it and create a draft post.
+              </p>
             </div>
             <p className="text-sm text-zinc-500">Status: {generation.status}</p>
           </div>
@@ -209,6 +273,38 @@ export default function GeneratePage() {
             selectedImage={selectedImage}
             onSelect={handleSelectImage}
           />
+        </div>
+      ) : null}
+
+      {draftPostId && captionOptions.length ? (
+        <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
+          <div className="mb-5">
+            <h3 className="text-lg font-semibold text-white">Caption options</h3>
+            <p className="text-sm text-zinc-400">
+              Pick one caption to save into the draft post. You can still edit it later in Posts.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            {captionOptions.map((caption) => {
+              const active = caption === selectedCaption;
+
+              return (
+                <button
+                  key={caption}
+                  type="button"
+                  onClick={() => handleSelectCaption(caption)}
+                  className={`rounded-2xl border px-4 py-4 text-left text-sm transition ${
+                    active
+                      ? "border-white bg-white text-black"
+                      : "border-white/10 bg-black/10 text-zinc-200 hover:border-white/20 hover:bg-white/5"
+                  }`}
+                >
+                  {caption}
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : null}
     </div>

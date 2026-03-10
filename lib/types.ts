@@ -54,7 +54,9 @@ export interface Post {
   generationId: string;
   platform: Platform;
   caption: string;
+  captionOptions: string[];
   status: PostStatus;
+  publishError: string | null;
   scheduledAt: string | null;
   publishedAt: string | null;
   externalPostId: string | null;
@@ -108,4 +110,25 @@ export interface CaptionInput {
 export interface PublishInput {
   postId: string;
   platform: Platform;
+}
+
+export interface CaptionGenerationResult {
+  options: string[];
+  provider: "mock" | "openai";
+  prompt: string;
+}
+
+export interface PublishPlatformResult {
+  ok: boolean;
+  platform: Exclude<Platform, "both">;
+  externalPostId: string | null;
+  error: string | null;
+}
+
+export interface PublishResult {
+  ok: boolean;
+  platform: Platform;
+  externalPostId: string | null;
+  error: string | null;
+  results: PublishPlatformResult[];
 }

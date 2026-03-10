@@ -12,13 +12,9 @@ import {
 import { sceneLibrary } from "@/lib/scene-library";
 import { composeImagePrompt } from "@/lib/prompts";
 import { generatePersonaImages } from "@/lib/image-generator";
-import { generateCaption } from "@/lib/caption-generator";
+import { generateCaptionOptions } from "@/lib/caption-generator";
 import { makeId } from "@/lib/utils";
-import {
-  publishToBoth,
-  publishToFacebook,
-  publishToInstagram,
-} from "@/lib/meta-publisher";
+import { publishContent } from "@/lib/meta-publisher";
 
 type DatabaseState = {
   characters: Character[];
@@ -85,7 +81,13 @@ function createSeedState(): DatabaseState {
         generationId,
         platform: "instagram",
         caption: "Slow mornings make everything feel lighter.",
+        captionOptions: [
+          "Slow mornings make everything feel lighter.",
+          "Keeping the day simple and the light soft.",
+          "A little calm before the city gets loud.",
+        ],
         status: "draft",
+        publishError: null,
         scheduledAt: null,
         publishedAt: null,
         externalPostId: null,
@@ -190,38 +192,15 @@ export async function createGeneration(input: GenerateImageInput) {
     sceneTemplateId: scene.id,
     finalPrompt,
     imageUrls,
-    selectedImageUrl: imageUrls[0] ?? null,
+    selectedImageUrl: null,
     status: "completed",
     createdAt: now(),
   };
 
   getState().generations.unshift(generation);
 
-  const captionResult = await generateCaption({
-    character,
-    scene,
-  });
-
-  const draftPost: Post = {
-    id: makeId("post"),
-    characterId: character.id,
-    generationId: generation.id,
-    platform: "instagram",
-    caption: captionResult.caption,
-    status: "draft",
-    scheduledAt: null,
-    publishedAt: null,
-    externalPostId: null,
-    createdAt: now(),
-    updatedAt: now(),
-  };
-
-  getState().posts.unshift(draftPost);
-
   return {
     generation,
-    draftPost,
-    captionResult,
   };
 }
 
@@ -235,7 +214,7 @@ export async function createCaption(input: CaptionInput) {
     throw new Error("Caption context not found.");
   }
 
-  return generateCaption({
+  return generateCaptionOptions({
     character,
     scene,
     tone: input.tone,
@@ -250,9 +229,52 @@ export async function selectGenerationImage(generationId: string, imageUrl: stri
     return null;
   }
 
+  const existingPost = state.posts.find((item) => item.generationId === generation.id) ?? null;
+  const character = state.characters.find((item) => item.id === generation.characterId) ?? null;
+  const scene =
+    sceneLibrary.find((item) => item.id === generation.sceneTemplateId) ?? null;
+
   generation.selectedImageUrl = imageUrl;
   generation.status = "approved";
-  return generation;
+
+  if (existingPost) {
+    return {
+      generation,
+      draftPost: existingPost,
+    };
+  }
+
+  if (!character || !scene) {
+    throw new Error("Unable to create draft post for this generation.");
+  }
+
+  const captionResult = await generateCaptionOptions({
+    character,
+    scene,
+  });
+
+  const draftPost: Post = {
+    id: makeId("post"),
+    characterId: character.id,
+    generationId: generation.id,
+    platform: "instagram",
+    caption: captionResult.options[0] ?? "",
+    captionOptions: captionResult.options,
+    status: "draft",
+    publishError: null,
+    scheduledAt: null,
+    publishedAt: null,
+    externalPostId: null,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+
+  state.posts.unshift(draftPost);
+
+  return {
+    generation,
+    draftPost,
+  };
 }
 
 export async function publishPost(postId: string, platform?: Platform) {
@@ -265,13 +287,37 @@ export async function publishPost(postId: string, platform?: Platform) {
 
   const post = state.posts[index];
   const target = platform ?? post.platform;
+  const generation = state.generations.find((item) => item.id === post.generationId);
+  const imageUrl = generation?.selectedImageUrl;
 
-  const result =
-    target === "instagram"
-      ? await publishToInstagram(post)
-      : target === "facebook"
-        ? await publishToFacebook(post)
-        : await publishToBoth(post);
+  if (!imageUrl) {
+    state.posts[index] = {
+      ...post,
+      platform: target,
+      status: "failed",
+      publishError: "No approved image selected for this post.",
+      externalPostId: null,
+      publishedAt: null,
+      updatedAt: now(),
+    };
+
+    return {
+      post: state.posts[index],
+      result: {
+        ok: false,
+        platform: target,
+        externalPostId: null,
+        error: "No approved image selected for this post.",
+        results: [],
+      },
+    };
+  }
+
+  const result = await publishContent({
+    platform: target,
+    imageUrl,
+    caption: post.caption,
+  });
 
   const nextStatus: PostStatus = result.ok ? "published" : "failed";
 
@@ -279,6 +325,7 @@ export async function publishPost(postId: string, platform?: Platform) {
     ...post,
     platform: target,
     status: nextStatus,
+    publishError: result.error,
     externalPostId: result.externalPostId,
     publishedAt: result.ok ? now() : null,
     updatedAt: now(),

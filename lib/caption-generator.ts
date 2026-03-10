@@ -1,6 +1,6 @@
 import { composeCaptionPrompt } from "@/lib/prompts";
-import { Character, SceneTemplate } from "@/lib/types";
-import { pick } from "@/lib/utils";
+import { getCaptionModel, getOpenAIClient } from "@/lib/openai";
+import { CaptionGenerationResult, Character, SceneTemplate } from "@/lib/types";
 
 const mockCaptions: Record<Character["postingTone"], string[]> = {
   "soft lifestyle": [
@@ -25,34 +25,100 @@ const mockCaptions: Record<Character["postingTone"], string[]> = {
   ],
 };
 
-export async function generateCaption(input: {
+function normalizeCaptionOptions(options: string[]) {
+  return Array.from(
+    new Set(
+      options
+        .map((option) => option.replace(/^[-*\d.)\s]+/, "").trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 3);
+}
+
+function getMockCaptionOptions(tone: Character["postingTone"]) {
+  return mockCaptions[tone].slice(0, 3);
+}
+
+export async function generateCaptionOptions(input: {
   character: Character;
   scene: SceneTemplate;
   tone?: Character["postingTone"];
-}) {
+}): Promise<CaptionGenerationResult> {
   const tone = input.tone ?? input.character.postingTone;
-  const fallback = pick(mockCaptions[tone]);
+  const prompt = composeCaptionPrompt({
+    character: input.character,
+    scene: input.scene,
+    tone,
+  });
+  const fallbackOptions = getMockCaptionOptions(tone);
 
   if (!process.env.OPENAI_API_KEY) {
     return {
-      caption: fallback,
+      options: fallbackOptions,
       provider: "mock",
-      prompt: composeCaptionPrompt({
-        character: input.character,
-        scene: input.scene,
-        tone,
-      }),
+      prompt,
     };
   }
 
-  // Hook point for the OpenAI Responses API.
+  try {
+    const client = getOpenAIClient();
+    const response = await client.responses.create({
+      model: getCaptionModel(),
+      input: [
+        {
+          role: "system",
+          content:
+            "You write short lifestyle captions for social media. Return JSON only.",
+        },
+        {
+          role: "user",
+          content: `${prompt}
+
+Return valid JSON with this exact shape:
+{"options":["caption one","caption two","caption three"]}`,
+        },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "caption_options",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              options: {
+                type: "array",
+                minItems: 3,
+                maxItems: 3,
+                items: {
+                  type: "string",
+                },
+              },
+            },
+            required: ["options"],
+          },
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.output_text) as { options?: string[] };
+    const options = normalizeCaptionOptions(parsed.options ?? []);
+
+    if (options.length === 3) {
+      return {
+        options,
+        provider: "openai",
+        prompt,
+      };
+    }
+  } catch (error) {
+    console.error("OpenAI caption generation failed, falling back to mock captions.", error);
+  }
+
   return {
-    caption: fallback,
-    provider: "openai-placeholder",
-    prompt: composeCaptionPrompt({
-      character: input.character,
-      scene: input.scene,
-      tone,
-    }),
+    options: fallbackOptions,
+    provider: "mock",
+    prompt,
   };
 }

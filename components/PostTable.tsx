@@ -66,6 +66,12 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
                 <p>External ID: {post.externalPostId ?? "Pending"}</p>
               </div>
 
+              {post.publishError ? (
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                  Publish error: {post.publishError}
+                </div>
+              ) : null}
+
               <CaptionEditor post={post} />
             </div>
           </div>
