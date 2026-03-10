@@ -223,7 +223,11 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
           onChange={(event) => updateField("appearanceDescription", event.target.value)}
           className={textareaClassName}
           rows={3}
+          placeholder="adult Korean-Taiwanese woman, long soft black hair, fair natural skin, gentle almond eyes, slim waist, fuller bust, curvy feminine silhouette, toned legs, elegant proportions, realistic anatomy"
         />
+        <p className="mt-1 text-xs text-zinc-400">
+          Describe an adult, realistic body shape. Favor natural curves and believable proportions over exaggerated anatomy.
+        </p>
       </Field>
       <Field label="Master reference image URL">
         <div className="space-y-3">
@@ -267,6 +271,7 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
           onChange={(event) => updateField("stylePrompt", event.target.value)}
           className={textareaClassName}
           rows={3}
+          placeholder="natural lifestyle photography, flattering three-quarter pose, feminine silhouette, fuller upper-body line through wardrobe and posture, slim waist emphasis, tasteful fitted styling, realistic anatomy, soft natural light, candid premium composition"
         />
       </Field>
       <Field label="Negative prompt">
