@@ -15,6 +15,12 @@ const realismNegativeDirection = [
   "Avoid exaggerated AI beauty, plastic skin, distorted hands, extra fingers, over-sharpening, fake HDR, uncanny facial symmetry, overly glossy textures, synthetic lighting, waxy skin, and over-retouched details.",
 ].join(" ");
 
+const silhouetteDirection = [
+  "Favor a natural, softly feminine silhouette with realistic body proportions.",
+  "Use flattering posture, three-quarter angles, and wardrobe fit to create a slightly fuller upper-body line without looking artificial.",
+  "Prefer tasteful necklines, soft drape, and natural shaping over exaggerated anatomy or overtly sexual styling.",
+].join(" ");
+
 function getSceneActionDirection(scene: SceneTemplate) {
   switch (scene.id) {
     case "morning-coffee":
@@ -166,6 +172,7 @@ export function composeImagePrompt(input: {
     `Style direction: ${character.stylePrompt}.`,
     customPrompt ? `Custom direction: ${customPrompt}.` : null,
     realismDirection,
+    silhouetteDirection,
     "If the reference image is seated indoors, do not default back to seated indoors unless the chosen scene explicitly requires it.",
     "Prioritize a new composition over preserving the original reference photo layout.",
     `Keep it platform-safe, premium, natural, and consistent with the same persona.`,
