@@ -8,7 +8,7 @@ AI Persona Publisher is a Next.js 15 MVP for managing AI lifestyle personas, gen
 - TypeScript
 - Tailwind CSS
 - Vercel-ready configuration
-- Mock-first service abstractions for OpenAI, Replicate, Vercel Blob, and Meta Graph API
+- Mock-first service abstractions for OpenAI, Replicate, Supabase Storage, and Meta Graph API
 
 ## Getting started
 
@@ -40,11 +40,13 @@ All secrets are read server-side only.
 - `OPENAI_CAPTION_MODEL`: optional, defaults to `gpt-4o-mini`
 - `REPLICATE_API_TOKEN`: connect Replicate Flux or another image provider
 - `REPLICATE_MODEL`: optional, defaults to `black-forest-labs/flux-dev`
-- `BLOB_READ_WRITE_TOKEN`: enable Vercel Blob storage
 - `META_ACCESS_TOKEN`: Meta Graph API access token
 - `META_IG_BUSINESS_ID`: Instagram Business account ID
 - `META_FB_PAGE_ID`: Facebook Page ID
 - `DATABASE_URL`: Postgres or Supabase connection string
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY`: server-side key for uploading generated assets to Storage
+- `SUPABASE_STORAGE_BUCKET`: optional, defaults to `persona-assets`
 
 ## Architecture notes
 
@@ -54,9 +56,10 @@ All secrets are read server-side only.
 - `lib/replicate.ts` wraps the Replicate prediction lifecycle and keeps the provider isolated.
 - `lib/caption-generator.ts` generates three caption options with OpenAI and falls back to mock captions when the API key is missing.
 - `lib/openai.ts` holds the shared OpenAI client setup.
-- `lib/blob.ts` contains the hook point for Vercel Blob storage.
+- `lib/storage.ts` uploads generated assets into Supabase Storage when configured.
 - `lib/meta-publisher.ts` contains the hook point for the Meta Graph API publish flow.
 - If Meta credentials are missing, publishing falls back to mock responses so local development still works.
+- If Supabase Storage credentials are missing, generated image URLs fall back to the source URLs so local development still works.
 
 ## Routes
 

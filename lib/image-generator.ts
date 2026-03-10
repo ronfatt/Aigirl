@@ -1,4 +1,4 @@
-import { storeGeneratedImage } from "@/lib/blob";
+import { storeGeneratedImage } from "@/lib/storage";
 import { generateReplicateImages } from "@/lib/replicate";
 import { makeId } from "@/lib/utils";
 

@@ -3,11 +3,13 @@ import { Header } from "@/components/Header";
 const envKeys = [
   "OPENAI_API_KEY",
   "REPLICATE_API_TOKEN",
-  "BLOB_READ_WRITE_TOKEN",
   "META_ACCESS_TOKEN",
   "META_IG_BUSINESS_ID",
   "META_FB_PAGE_ID",
   "DATABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_STORAGE_BUCKET",
 ];
 
 const docs = [
@@ -20,8 +22,8 @@ const docs = [
     description: "Connect Replicate Flux or another provider in lib/image-generator.ts.",
   },
   {
-    title: "Vercel Blob",
-    description: "Persist generated files via lib/blob.ts once image bytes are available.",
+    title: "Supabase Storage",
+    description: "Persist generated files via lib/storage.ts with a server-side service role key.",
   },
   {
     title: "Meta Graph API",
