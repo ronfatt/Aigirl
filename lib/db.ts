@@ -69,6 +69,7 @@ declare global {
 
 const now = () => new Date().toISOString();
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const READ_TIMEOUT_MS = 2500;
 
 function createSeedState(): DatabaseState {
   const timestamp = now();
@@ -145,6 +146,28 @@ function getMemoryState() {
   }
 
   return globalThis.__aiPersonaDb;
+}
+
+function timeoutError(label: string) {
+  return new Error(`${label} timed out after ${READ_TIMEOUT_MS}ms.`);
+}
+
+async function withReadFallback<T>(label: string, read: () => Promise<T>, fallback: () => T) {
+  if (!hasDatabaseUrl) {
+    return fallback();
+  }
+
+  try {
+    return await Promise.race([
+      read(),
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(timeoutError(label)), READ_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (error) {
+    console.error(`${label} failed, using fallback data.`, error);
+    return fallback();
+  }
 }
 
 function normalizeDate(value: string | Date | null | undefined) {
@@ -469,19 +492,15 @@ async function listGenerationsFromDb() {
 }
 
 export async function listCharacters() {
-  if (!hasDatabaseUrl) {
-    return getMemoryState().characters;
-  }
-
-  return listCharactersFromDb();
+  return withReadFallback("listCharacters", () => listCharactersFromDb(), () => getMemoryState().characters);
 }
 
 export async function getCharacter(id: string) {
-  if (!hasDatabaseUrl) {
-    return getMemoryState().characters.find((character) => character.id === id) ?? null;
-  }
-
-  return getCharacterFromDb(id);
+  return withReadFallback(
+    "getCharacter",
+    () => getCharacterFromDb(id),
+    () => getMemoryState().characters.find((character) => character.id === id) ?? null,
+  );
 }
 
 export async function createCharacter(input: CharacterInput) {
@@ -625,11 +644,7 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
 }
 
 export async function listPosts() {
-  if (!hasDatabaseUrl) {
-    return getMemoryState().posts;
-  }
-
-  return listPostsFromDb();
+  return withReadFallback("listPosts", () => listPostsFromDb(), () => getMemoryState().posts);
 }
 
 export async function updatePost(
@@ -1147,64 +1162,72 @@ export async function publishPost(postId: string, platform?: Platform) {
 }
 
 export async function getDashboardData(): Promise<DashboardPayload> {
-  if (!hasDatabaseUrl) {
-    const state = getMemoryState();
-
-    return {
-      metrics: {
-        totalCharacters: state.characters.length,
-        totalGeneratedImages: state.generations.reduce(
-          (total, generation) => total + generation.imageUrls.length,
-          0,
-        ),
-        totalDraftedPosts: state.posts.filter((post) => post.status === "draft").length,
-        totalPublishedPosts: state.posts.filter((post) => post.status === "published").length,
-      },
-      recentGenerations: state.generations.slice(0, 5).map((generation) => {
-        const characterName =
-          state.characters.find((item) => item.id === generation.characterId)?.displayName ??
-          "Unknown";
-        const sceneTitle =
-          sceneLibrary.find((item) => item.id === generation.sceneTemplateId)?.title ?? "Scene";
-        return {
-          ...generation,
-          characterName,
-          sceneTitle,
-        };
-      }),
-      recentPosts: state.posts.slice(0, 5).map((post) => {
-        const characterName =
-          state.characters.find((item) => item.id === post.characterId)?.displayName ?? "Unknown";
-        const imageUrl =
-          state.generations.find((item) => item.id === post.generationId)?.selectedImageUrl ?? null;
-        return {
-          ...post,
-          characterName,
-          imageUrl,
-        };
-      }),
-    };
-  }
-
-  const [characters, generations, posts] = await Promise.all([
-    listCharactersFromDb(),
-    listGenerationsFromDb(),
-    listPostsFromDb(),
-  ]);
-
-  return {
+  const buildPayload = (state: DatabaseState) => ({
     metrics: {
-      totalCharacters: characters.length,
-      totalGeneratedImages: generations.reduce(
+      totalCharacters: state.characters.length,
+      totalGeneratedImages: state.generations.reduce(
         (total, generation) => total + generation.imageUrls.length,
         0,
       ),
-      totalDraftedPosts: posts.filter((post) => post.status === "draft").length,
-      totalPublishedPosts: posts.filter((post) => post.status === "published").length,
+      totalDraftedPosts: state.posts.filter((post) => post.status === "draft").length,
+      totalPublishedPosts: state.posts.filter((post) => post.status === "published").length,
     },
-    recentGenerations: generations.slice(0, 5).map((generation) => {
+    recentGenerations: state.generations.slice(0, 5).map((generation) => {
       const characterName =
-        characters.find((item) => item.id === generation.characterId)?.displayName ?? "Unknown";
+        state.characters.find((item) => item.id === generation.characterId)?.displayName ??
+        "Unknown";
+      const sceneTitle =
+        sceneLibrary.find((item) => item.id === generation.sceneTemplateId)?.title ?? "Scene";
+      return {
+        ...generation,
+        characterName,
+        sceneTitle,
+      };
+    }),
+    recentPosts: state.posts.slice(0, 5).map((post) => {
+      const characterName =
+        state.characters.find((item) => item.id === post.characterId)?.displayName ?? "Unknown";
+      const imageUrl =
+        state.generations.find((item) => item.id === post.generationId)?.selectedImageUrl ?? null;
+      return {
+        ...post,
+        characterName,
+        imageUrl,
+      };
+    }),
+  });
+
+  if (!hasDatabaseUrl) {
+    return buildPayload(getMemoryState());
+  }
+
+  const snapshot = await withReadFallback(
+    "getDashboardData",
+    async () => {
+      const [characters, generations, posts] = await Promise.all([
+        listCharactersFromDb(),
+        listGenerationsFromDb(),
+        listPostsFromDb(),
+      ]);
+
+      return { characters, generations, posts };
+    },
+    () => getMemoryState(),
+  );
+
+  return {
+    metrics: {
+      totalCharacters: snapshot.characters.length,
+      totalGeneratedImages: snapshot.generations.reduce(
+        (total, generation) => total + generation.imageUrls.length,
+        0,
+      ),
+      totalDraftedPosts: snapshot.posts.filter((post) => post.status === "draft").length,
+      totalPublishedPosts: snapshot.posts.filter((post) => post.status === "published").length,
+    },
+    recentGenerations: snapshot.generations.slice(0, 5).map((generation) => {
+      const characterName =
+        snapshot.characters.find((item) => item.id === generation.characterId)?.displayName ?? "Unknown";
       const sceneTitle =
         sceneLibrary.find((item) => item.id === generation.sceneTemplateId)?.title ?? "Scene";
 
@@ -1214,11 +1237,11 @@ export async function getDashboardData(): Promise<DashboardPayload> {
         sceneTitle,
       };
     }),
-    recentPosts: posts.slice(0, 5).map((post) => {
+    recentPosts: snapshot.posts.slice(0, 5).map((post) => {
       const characterName =
-        characters.find((item) => item.id === post.characterId)?.displayName ?? "Unknown";
+        snapshot.characters.find((item) => item.id === post.characterId)?.displayName ?? "Unknown";
       const imageUrl =
-        generations.find((item) => item.id === post.generationId)?.selectedImageUrl ?? null;
+        snapshot.generations.find((item) => item.id === post.generationId)?.selectedImageUrl ?? null;
 
       return {
         ...post,
@@ -1230,19 +1253,21 @@ export async function getDashboardData(): Promise<DashboardPayload> {
 }
 
 export async function getDatabaseSnapshot() {
-  if (!hasDatabaseUrl) {
-    return getMemoryState();
-  }
+  return withReadFallback(
+    "getDatabaseSnapshot",
+    async () => {
+      const [characters, generations, posts] = await Promise.all([
+        listCharactersFromDb(),
+        listGenerationsFromDb(),
+        listPostsFromDb(),
+      ]);
 
-  const [characters, generations, posts] = await Promise.all([
-    listCharactersFromDb(),
-    listGenerationsFromDb(),
-    listPostsFromDb(),
-  ]);
-
-  return {
-    characters,
-    generations,
-    posts,
-  };
+      return {
+        characters,
+        generations,
+        posts,
+      };
+    },
+    () => getMemoryState(),
+  );
 }

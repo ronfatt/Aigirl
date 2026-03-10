@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
@@ -23,11 +23,9 @@ export function GenerateWorkspace({
   initialCharacters,
   initialHistory,
 }: GenerateWorkspaceProps) {
-  const [characters] = useState<Character[]>(initialCharacters);
+  const [characters, setCharacters] = useState<Character[]>(initialCharacters);
   const [history, setHistory] = useState<GenerationHistoryItem[]>(initialHistory);
-  const [characterId, setCharacterId] = useState(
-    initialCharacters.find((item) => item.isActive)?.id ?? initialCharacters[0]?.id ?? "",
-  );
+  const [characterId, setCharacterId] = useState("");
   const [sceneId, setSceneId] = useState(sceneLibrary[0]?.id ?? "");
   const [customPrompt, setCustomPrompt] = useState("");
   const [imageCount, setImageCount] = useState(2);
@@ -39,7 +37,72 @@ export function GenerateWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingCharacters, setLoadingCharacters] = useState(initialCharacters.length === 0);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setCharacterId(
+      initialCharacters.find((item) => item.isActive)?.id ?? initialCharacters[0]?.id ?? "",
+    );
+  }, [initialCharacters]);
+
+  useEffect(() => {
+    if (initialCharacters.length && initialHistory.length) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadInitialData() {
+      setLoadingCharacters(true);
+      setLoadingHistory(true);
+
+      try {
+        const [charactersResponse, historyResponse] = await Promise.all([
+          fetch("/api/characters"),
+          fetch("/api/generations"),
+        ]);
+
+        if (!charactersResponse.ok) {
+          throw new Error("Unable to load characters.");
+        }
+
+        if (!historyResponse.ok) {
+          throw new Error("Unable to load generation history.");
+        }
+
+        const charactersPayload = (await charactersResponse.json()) as { characters: Character[] };
+        const historyPayload = (await historyResponse.json()) as { generations: GenerationHistoryItem[] };
+
+        if (!active) {
+          return;
+        }
+
+        setCharacters(charactersPayload.characters);
+        setHistory(historyPayload.generations);
+        setCharacterId(
+          charactersPayload.characters.find((item) => item.isActive)?.id ??
+            charactersPayload.characters[0]?.id ??
+            "",
+        );
+      } catch (loadError) {
+        if (active) {
+          setError(loadError instanceof Error ? loadError.message : "Unable to load page.");
+        }
+      } finally {
+        if (active) {
+          setLoadingCharacters(false);
+          setLoadingHistory(false);
+        }
+      }
+    }
+
+    void loadInitialData();
+
+    return () => {
+      active = false;
+    };
+  }, [initialCharacters, initialHistory]);
 
   const currentCharacter = characters.find((item) => item.id === characterId) ?? null;
   const currentScene = sceneLibrary.find((item) => item.id === sceneId) ?? sceneLibrary[0];
@@ -67,6 +130,18 @@ export function GenerateWorkspace({
     } finally {
       setLoadingHistory(false);
     }
+  }
+
+  if (loadingCharacters) {
+    return (
+      <div>
+        <Header
+          title="Generate"
+          description="Choose one active persona, merge it with a scene template, and create draft visuals for review."
+        />
+        <LoadingState label="Loading personas" />
+      </div>
+    );
   }
 
   async function handleGenerate() {
