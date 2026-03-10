@@ -1,4 +1,9 @@
-import { Platform, PublishPlatformResult, PublishResult } from "@/lib/types";
+import {
+  MetaConnectionTestResult,
+  Platform,
+  PublishPlatformResult,
+  PublishResult,
+} from "@/lib/types";
 
 const META_GRAPH_BASE_URL = "https://graph.facebook.com/v23.0";
 
@@ -28,6 +33,26 @@ async function metaFormPost(path: string, params: Record<string, string>) {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Meta Graph API request failed (${response.status}): ${text || response.statusText}`);
+  }
+
+  return response.json() as Promise<Record<string, unknown>>;
+}
+
+async function metaGet(path: string, params: Record<string, string>) {
+  const url = new URL(`${META_GRAPH_BASE_URL}${path}`);
+
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
     cache: "no-store",
   });
 
@@ -201,4 +226,54 @@ export async function publishContent(input: {
   }
 
   return publishToBoth(input.imageUrl, input.caption);
+}
+
+export async function testFacebookConnection(): Promise<MetaConnectionTestResult> {
+  if (!canPublishToFacebook()) {
+    return {
+      ok: false,
+      platform: "facebook",
+      mode: "mock",
+      message: "META_ACCESS_TOKEN or META_FB_PAGE_ID is missing, so live Facebook publishing is disabled.",
+      details: {},
+    };
+  }
+
+  const { accessToken, fbPageId } = getMetaConfig();
+
+  try {
+    const [page, permissions] = await Promise.all([
+      metaGet(`/${fbPageId}`, {
+        fields: "id,name",
+        access_token: accessToken,
+      }),
+      metaGet("/me/permissions", {
+        access_token: accessToken,
+      }),
+    ]);
+
+    const permissionEntries = Array.isArray(permissions.data) ? permissions.data : [];
+
+    return {
+      ok: true,
+      platform: "facebook",
+      mode: "live",
+      message: "Facebook Page connection looks valid. The token can read the configured page.",
+      details: {
+        pageId: typeof page.id === "string" ? page.id : fbPageId,
+        pageName: typeof page.name === "string" ? page.name : null,
+        tokenScopeCount: permissionEntries.length,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      platform: "facebook",
+      mode: "live",
+      message: error instanceof Error ? error.message : "Facebook connection test failed.",
+      details: {
+        pageId: fbPageId,
+      },
+    };
+  }
 }

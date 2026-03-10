@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { MetaConnectionCard } from "@/components/MetaConnectionCard";
 
 const envKeys = [
   "OPENAI_API_KEY",
@@ -63,6 +64,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-4">
+          <MetaConnectionCard />
+
           {docs.map((item) => (
             <div
               key={item.title}

@@ -140,3 +140,15 @@ export interface PublishResult {
   error: string | null;
   results: PublishPlatformResult[];
 }
+
+export interface MetaConnectionTestResult {
+  ok: boolean;
+  platform: Exclude<Platform, "both">;
+  mode: "live" | "mock";
+  message: string;
+  details: {
+    pageId?: string;
+    pageName?: string | null;
+    tokenScopeCount?: number;
+  };
+}
