@@ -2,6 +2,7 @@ const REPLICATE_API_URL = "https://api.replicate.com/v1";
 const DEFAULT_MODEL = "black-forest-labs/flux-dev";
 const DEFAULT_POLL_ATTEMPTS = 15;
 const DEFAULT_POLL_INTERVAL_MS = 1500;
+const DEFAULT_PROMPT_STRENGTH = 0.9;
 
 type ReplicatePredictionResponse = {
   id: string;
@@ -111,10 +112,17 @@ export async function generateReplicateImages(input: {
   referenceImageUrl?: string;
   count: number;
 }) {
+  const configuredPromptStrength = Number(process.env.REPLICATE_PROMPT_STRENGTH || DEFAULT_PROMPT_STRENGTH);
+  const promptStrength = Number.isFinite(configuredPromptStrength)
+    ? Math.min(Math.max(configuredPromptStrength, 0.1), 1)
+    : DEFAULT_PROMPT_STRENGTH;
+
   const prediction = await createReplicatePrediction({
     prompt: input.finalPrompt,
     image: input.referenceImageUrl,
-    prompt_strength: input.referenceImageUrl ? 0.72 : undefined,
+    // Higher prompt strength pushes the model to create a new scene and pose
+    // while still borrowing identity cues from the reference image.
+    prompt_strength: input.referenceImageUrl ? promptStrength : undefined,
     num_outputs: input.count,
     aspect_ratio: "4:5",
     output_format: "jpg",

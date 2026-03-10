@@ -5,6 +5,10 @@ const realismDirection = [
   "The persona should look natural, human, and visually consistent across images.",
   "Use natural light, realistic skin texture, candid framing, and social-media-friendly composition.",
   "Preserve believable facial features, hands, body proportions, and camera perspective.",
+  "Treat the reference image only as an identity anchor for the same face and general appearance.",
+  "Do not reuse the same pose, outfit, background, framing, crop, or body position from the reference image.",
+  "Create a genuinely new moment with scene-appropriate posture, hand placement, camera angle, expression, and environment details.",
+  "Make the selected scene clearly visible so the background and activity read as a different setting, not just a wardrobe change.",
 ].join(" ");
 
 const realismNegativeDirection = [

@@ -41,15 +41,13 @@ async function metaFormPost(path: string, params: Record<string, string>) {
 
 async function publishMock(
   platform: Exclude<Platform, "both">,
-  imageUrl: string,
 ): Promise<PublishPlatformResult> {
-  const success = Math.random() > 0.12;
-
   return {
-    ok: success,
+    ok: false,
     platform,
-    externalPostId: success ? `${platform}_${Buffer.from(imageUrl).toString("base64").slice(0, 12)}` : null,
-    error: success ? null : "Mock publish failure",
+    externalPostId: null,
+    error:
+      "Mock publishing mode. Meta credentials are missing or incomplete, so no live post was sent.",
   };
 }
 
@@ -58,7 +56,7 @@ export async function publishToInstagram(
   caption: string,
 ): Promise<PublishPlatformResult> {
   if (!canPublishToInstagram()) {
-    return publishMock("instagram", imageUrl);
+    return publishMock("instagram");
   }
 
   const { accessToken, igBusinessId } = getMetaConfig();
@@ -110,7 +108,7 @@ export async function publishToFacebook(
   caption: string,
 ): Promise<PublishPlatformResult> {
   if (!canPublishToFacebook()) {
-    return publishMock("facebook", imageUrl);
+    return publishMock("facebook");
   }
 
   const { accessToken, fbPageId } = getMetaConfig();
