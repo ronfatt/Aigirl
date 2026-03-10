@@ -1,4 +1,5 @@
 import postgres, { Sql } from "postgres";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   CaptionInput,
   Character,
@@ -23,39 +24,75 @@ type DatabaseState = {
   posts: Post[];
 };
 
-type DbCharacterRow = Omit<Character, "isActive"> & {
+type DbCharacterRow = {
+  id: string;
+  name: string;
+  displayName?: string;
+  display_name?: string;
+  ageRange?: string;
+  age_range?: string;
+  identityStyle?: string;
+  identity_style?: string;
+  city: string;
+  bio: string;
+  vibe: string;
+  appearanceDescription?: string;
+  appearance_description?: string;
+  masterReferenceImageUrl?: string;
+  master_reference_image_url?: string;
+  stylePrompt?: string;
+  style_prompt?: string;
+  negativePrompt?: string;
+  negative_prompt?: string;
+  postingTone?: string;
+  posting_tone?: string;
   is_active: boolean;
+  createdAt?: string | Date;
+  created_at?: string | Date;
+  updatedAt?: string | Date;
+  updated_at?: string | Date;
 };
 
-type DbGenerationRow = Omit<Generation, "characterId" | "sceneTemplateId" | "imageUrls" | "selectedImageUrl" | "createdAt"> & {
-  character_id: string;
-  scene_template_id: string;
-  image_urls: string[];
-  selected_image_url: string | null;
-  created_at: string | Date;
+type DbGenerationRow = {
+  id: string;
+  characterId?: string;
+  character_id?: string;
+  sceneTemplateId?: string;
+  scene_template_id?: string;
+  finalPrompt?: string;
+  final_prompt?: string;
+  imageUrls?: string[];
+  image_urls?: string[];
+  selectedImageUrl?: string | null;
+  selected_image_url?: string | null;
+  status: Generation["status"];
+  createdAt?: string | Date;
+  created_at?: string | Date;
 };
 
-type DbPostRow = Omit<
-  Post,
-  | "characterId"
-  | "generationId"
-  | "captionOptions"
-  | "publishError"
-  | "scheduledAt"
-  | "publishedAt"
-  | "externalPostId"
-  | "createdAt"
-  | "updatedAt"
-> & {
-  character_id: string;
-  generation_id: string;
-  caption_options: string[];
-  publish_error: string | null;
-  scheduled_at: string | Date | null;
-  published_at: string | Date | null;
-  external_post_id: string | null;
-  created_at: string | Date;
-  updated_at: string | Date;
+type DbPostRow = {
+  id: string;
+  characterId?: string;
+  character_id?: string;
+  generationId?: string;
+  generation_id?: string;
+  platform: Platform;
+  caption: string;
+  captionOptions?: string[];
+  caption_options?: string[];
+  status: PostStatus;
+  publishError?: string | null;
+  publish_error?: string | null;
+  scheduledAt?: string | Date | null;
+  scheduled_at?: string | Date | null;
+  publishedAt?: string | Date | null;
+  published_at?: string | Date | null;
+  externalPostId?: string | null;
+  external_post_id?: string | null;
+  createdAt?: string | Date;
+  created_at?: string | Date;
+  updatedAt?: string | Date;
+  updated_at?: string | Date;
 };
 
 declare global {
@@ -65,10 +102,15 @@ declare global {
   var __aiPersonaSql: Sql | undefined;
   // eslint-disable-next-line no-var
   var __aiPersonaDbInit: Promise<void> | undefined;
+  // eslint-disable-next-line no-var
+  var __aiPersonaSupabase: SupabaseClient | undefined;
 }
 
 const now = () => new Date().toISOString();
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const hasSupabaseAdmin = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
 const READ_TIMEOUT_MS = 8000;
 const WRITE_TIMEOUT_MS = 12000;
 const WORKFLOW_TIMEOUT_MS = 20000;
@@ -197,55 +239,85 @@ function normalizeDate(value: string | Date | null | undefined) {
   return new Date(value).toISOString();
 }
 
+function getSupabaseDbClient() {
+  if (!hasSupabaseAdmin) {
+    return null;
+  }
+
+  if (!globalThis.__aiPersonaSupabase) {
+    globalThis.__aiPersonaSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      },
+    );
+  }
+
+  return globalThis.__aiPersonaSupabase;
+}
+
 function mapCharacterRow(row: DbCharacterRow): Character {
   return {
     id: row.id,
     name: row.name,
-    displayName: row.displayName,
-    ageRange: row.ageRange,
-    identityStyle: row.identityStyle,
+    displayName: row.displayName ?? row.display_name ?? "",
+    ageRange: row.ageRange ?? row.age_range ?? "",
+    identityStyle: row.identityStyle ?? row.identity_style ?? "",
     city: row.city,
     bio: row.bio,
     vibe: row.vibe,
-    appearanceDescription: row.appearanceDescription,
-    masterReferenceImageUrl: row.masterReferenceImageUrl,
-    stylePrompt: row.stylePrompt,
-    negativePrompt: row.negativePrompt,
-    postingTone: row.postingTone,
+    appearanceDescription: row.appearanceDescription ?? row.appearance_description ?? "",
+    masterReferenceImageUrl:
+      row.masterReferenceImageUrl ?? row.master_reference_image_url ?? "",
+    stylePrompt: row.stylePrompt ?? row.style_prompt ?? "",
+    negativePrompt: row.negativePrompt ?? row.negative_prompt ?? "",
+    postingTone: (row.postingTone ?? row.posting_tone ?? "soft lifestyle") as Character["postingTone"],
     isActive: row.is_active,
-    createdAt: normalizeDate(row.createdAt)!,
-    updatedAt: normalizeDate(row.updatedAt)!,
+    createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
+    updatedAt: normalizeDate(row.updatedAt ?? row.updated_at)!,
   };
 }
 
 function mapGenerationRow(row: DbGenerationRow): Generation {
   return {
     id: row.id,
-    characterId: row.character_id,
-    sceneTemplateId: row.scene_template_id,
-    finalPrompt: row.finalPrompt,
-    imageUrls: Array.isArray(row.image_urls) ? row.image_urls : [],
-    selectedImageUrl: row.selected_image_url,
+    characterId: row.characterId ?? row.character_id ?? "",
+    sceneTemplateId: row.sceneTemplateId ?? row.scene_template_id ?? "",
+    finalPrompt: row.finalPrompt ?? row.final_prompt ?? "",
+    imageUrls: Array.isArray(row.imageUrls)
+      ? row.imageUrls
+      : Array.isArray(row.image_urls)
+        ? row.image_urls
+        : [],
+    selectedImageUrl: row.selectedImageUrl ?? row.selected_image_url ?? null,
     status: row.status,
-    createdAt: normalizeDate(row.created_at)!,
+    createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
   };
 }
 
 function mapPostRow(row: DbPostRow): Post {
   return {
     id: row.id,
-    characterId: row.character_id,
-    generationId: row.generation_id,
+    characterId: row.characterId ?? row.character_id ?? "",
+    generationId: row.generationId ?? row.generation_id ?? "",
     platform: row.platform,
     caption: row.caption,
-    captionOptions: Array.isArray(row.caption_options) ? row.caption_options : [],
+    captionOptions: Array.isArray(row.captionOptions)
+      ? row.captionOptions
+      : Array.isArray(row.caption_options)
+        ? row.caption_options
+        : [],
     status: row.status,
-    publishError: row.publish_error,
-    scheduledAt: normalizeDate(row.scheduled_at),
-    publishedAt: normalizeDate(row.published_at),
-    externalPostId: row.external_post_id,
-    createdAt: normalizeDate(row.created_at)!,
-    updatedAt: normalizeDate(row.updated_at)!,
+    publishError: row.publishError ?? row.publish_error ?? null,
+    scheduledAt: normalizeDate(row.scheduledAt ?? row.scheduled_at),
+    publishedAt: normalizeDate(row.publishedAt ?? row.published_at),
+    externalPostId: row.externalPostId ?? row.external_post_id ?? null,
+    createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
+    updatedAt: normalizeDate(row.updatedAt ?? row.updated_at)!,
   };
 }
 
@@ -405,6 +477,21 @@ async function ensureDatabaseReady() {
 }
 
 async function listCharactersFromDb() {
+  const supabase = getSupabaseDbClient();
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("characters")
+      .select("*")
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).map((row) => mapCharacterRow(row as DbCharacterRow));
+  }
+
   const sql = requireSql();
   const rows = await withBootstrapOnMissingSchema(() =>
     sql<DbCharacterRow[]>`
@@ -434,6 +521,18 @@ async function listCharactersFromDb() {
 }
 
 async function getCharacterFromDb(id: string) {
+  const supabase = getSupabaseDbClient();
+
+  if (supabase) {
+    const { data, error } = await supabase.from("characters").select("*").eq("id", id).maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data ? mapCharacterRow(data as DbCharacterRow) : null;
+  }
+
   const sql = requireSql();
   const rows = await withBootstrapOnMissingSchema(() =>
     sql<DbCharacterRow[]>`
@@ -464,6 +563,18 @@ async function getCharacterFromDb(id: string) {
 }
 
 async function listPostsFromDb() {
+  const supabase = getSupabaseDbClient();
+
+  if (supabase) {
+    const { data, error } = await supabase.from("posts").select("*").order("updated_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).map((row) => mapPostRow(row as DbPostRow));
+  }
+
   const sql = requireSql();
   const rows = await withBootstrapOnMissingSchema(() =>
     sql<DbPostRow[]>`
@@ -490,6 +601,21 @@ async function listPostsFromDb() {
 }
 
 async function listGenerationsFromDb() {
+  const supabase = getSupabaseDbClient();
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("generations")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).map((row) => mapGenerationRow(row as DbGenerationRow));
+  }
+
   const sql = requireSql();
   const rows = await withBootstrapOnMissingSchema(() =>
     sql<DbGenerationRow[]>`
@@ -537,6 +663,42 @@ export async function createCharacter(input: CharacterInput) {
 
     getMemoryState().characters.unshift(entry);
     return entry;
+  }
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const id = makeId("char");
+    const payload = {
+      id,
+      name: input.name,
+      display_name: input.displayName,
+      age_range: input.ageRange,
+      identity_style: input.identityStyle,
+      city: input.city,
+      bio: input.bio,
+      vibe: input.vibe,
+      appearance_description: input.appearanceDescription,
+      master_reference_image_url: input.masterReferenceImageUrl,
+      style_prompt: input.stylePrompt,
+      negative_prompt: input.negativePrompt,
+      posting_tone: input.postingTone,
+      is_active: input.isActive,
+    };
+
+    const { data, error }: { data: DbCharacterRow | null; error: Error | null } =
+      await withWriteTimeout("createCharacter", async () => {
+        const response = await supabase.from("characters").insert(payload).select("*").single();
+        return {
+          data: (response.data as DbCharacterRow | null) ?? null,
+          error: (response.error as Error | null) ?? null,
+        };
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return mapCharacterRow(data as DbCharacterRow);
   }
 
   const sql = requireSql();
@@ -628,6 +790,47 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
     ...input,
     updatedAt: now(),
   };
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const payload = {
+      name: next.name,
+      display_name: next.displayName,
+      age_range: next.ageRange,
+      identity_style: next.identityStyle,
+      city: next.city,
+      bio: next.bio,
+      vibe: next.vibe,
+      appearance_description: next.appearanceDescription,
+      master_reference_image_url: next.masterReferenceImageUrl,
+      style_prompt: next.stylePrompt,
+      negative_prompt: next.negativePrompt,
+      posting_tone: next.postingTone,
+      is_active: next.isActive,
+      updated_at: next.updatedAt,
+    };
+
+    const { data, error }: { data: DbCharacterRow | null; error: Error | null } =
+      await withWriteTimeout("updateCharacter", async () => {
+        const response = await supabase
+          .from("characters")
+          .update(payload)
+          .eq("id", id)
+          .select("*")
+          .single();
+        return {
+          data: (response.data as DbCharacterRow | null) ?? null,
+          error: (response.error as Error | null) ?? null,
+        };
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return mapCharacterRow(data as DbCharacterRow);
+  }
+
   const sql = requireSql();
   const rows = await withWriteTimeout("updateCharacter", async () => {
     await ensureDatabaseReady();
@@ -687,6 +890,24 @@ export async function deleteCharacter(id: string) {
     return true;
   }
 
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { error, count }: { error: Error | null; count: number | null } =
+      await withWriteTimeout("deleteCharacter", async () => {
+        const response = await supabase.from("characters").delete({ count: "exact" }).eq("id", id);
+        return {
+          error: (response.error as Error | null) ?? null,
+          count: response.count ?? null,
+        };
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return Boolean(count);
+  }
+
   const sql = requireSql();
   const deletedRows = await withWriteTimeout("deleteCharacter", async () => {
     await ensureDatabaseReady();
@@ -742,6 +963,28 @@ export async function updatePost(
     updatedAt: now(),
   };
 
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("posts")
+      .update({
+        caption: next.caption,
+        platform: next.platform,
+        status: next.status,
+        scheduled_at: next.scheduledAt,
+        updated_at: next.updatedAt,
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return mapPostRow(data as DbPostRow);
+  }
+
   const sql = requireSql();
   await ensureDatabaseReady();
   const rows = await sql<DbPostRow[]>`
@@ -778,6 +1021,32 @@ async function insertGenerationRecord(input: {
   finalPrompt: string;
   imageUrls: string[];
 }) {
+  const supabase = getSupabaseDbClient();
+
+  if (supabase) {
+    const payload = {
+      id: input.id,
+      character_id: input.characterId,
+      scene_template_id: input.sceneTemplateId,
+      final_prompt: input.finalPrompt,
+      image_urls: input.imageUrls,
+      selected_image_url: null,
+      status: "completed",
+    };
+
+    const { data, error } = await supabase
+      .from("generations")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return mapGenerationRow(data as DbGenerationRow);
+  }
+
   const sql = requireSql();
   await ensureDatabaseReady();
   const rows = await sql<DbGenerationRow[]>`
@@ -932,6 +1201,90 @@ export async function selectGenerationImage(generationId: string, imageUrl: stri
     state.posts.unshift(draftPost);
 
     return { generation, draftPost };
+  }
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { data: generationData, error: generationError } = await supabase
+      .from("generations")
+      .update({
+        selected_image_url: imageUrl,
+        status: "approved",
+      })
+      .eq("id", generationId)
+      .select("*")
+      .maybeSingle();
+
+    if (generationError) {
+      throw generationError;
+    }
+
+    const generation = generationData ? mapGenerationRow(generationData as DbGenerationRow) : null;
+
+    if (!generation) {
+      return null;
+    }
+
+    const { data: existingPostData, error: existingPostError } = await supabase
+      .from("posts")
+      .select("*")
+      .eq("generation_id", generation.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingPostError) {
+      throw existingPostError;
+    }
+
+    if (existingPostData) {
+      return {
+        generation,
+        draftPost: mapPostRow(existingPostData as DbPostRow),
+      };
+    }
+
+    const resolvedCharacter = await withWorkflowTimeout("selectGenerationImage.getCharacter", () =>
+      getCharacterFromDb(generation.characterId),
+    );
+    const scene = sceneLibrary.find((item) => item.id === generation.sceneTemplateId);
+
+    if (!resolvedCharacter || !scene) {
+      throw new Error("Unable to create draft post for this generation.");
+    }
+
+    const captionResult = await generateCaptionOptions({
+      character: resolvedCharacter,
+      scene,
+    });
+
+    const { data: insertedPostData, error: insertedPostError } = await supabase
+      .from("posts")
+      .insert({
+        id: makeId("post"),
+        character_id: resolvedCharacter.id,
+        generation_id: generation.id,
+        platform: "instagram",
+        caption: captionResult.options[0] ?? "",
+        caption_options: captionResult.options,
+        status: "draft",
+        publish_error: null,
+        scheduled_at: null,
+        published_at: null,
+        external_post_id: null,
+        created_at: now(),
+        updated_at: now(),
+      })
+      .select("*")
+      .single();
+
+    if (insertedPostError) {
+      throw insertedPostError;
+    }
+
+    return {
+      generation,
+      draftPost: mapPostRow(insertedPostData as DbPostRow),
+    };
   }
 
   const sql = requireSql();
@@ -1110,6 +1463,100 @@ export async function publishPost(postId: string, platform?: Platform) {
 
     return {
       post: state.posts[index],
+      result,
+    };
+  }
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .select("*")
+      .eq("id", postId)
+      .maybeSingle();
+
+    if (postError) {
+      throw postError;
+    }
+
+    const post = postData ? mapPostRow(postData as DbPostRow) : null;
+
+    if (!post) {
+      throw new Error("Post not found.");
+    }
+
+    const target = platform ?? post.platform;
+    const { data: generationData, error: generationError } = await supabase
+      .from("generations")
+      .select("*")
+      .eq("id", post.generationId)
+      .maybeSingle();
+
+    if (generationError) {
+      throw generationError;
+    }
+
+    const generation = generationData ? mapGenerationRow(generationData as DbGenerationRow) : null;
+    const imageUrl = generation?.selectedImageUrl;
+
+    if (!imageUrl) {
+      const { data: updatedData, error: updateError } = await supabase
+        .from("posts")
+        .update({
+          platform: target,
+          status: "failed",
+          publish_error: "No approved image selected for this post.",
+          external_post_id: null,
+          published_at: null,
+          updated_at: now(),
+        })
+        .eq("id", postId)
+        .select("*")
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return {
+        post: mapPostRow(updatedData as DbPostRow),
+        result: {
+          ok: false,
+          platform: target,
+          externalPostId: null,
+          error: "No approved image selected for this post.",
+          results: [],
+        },
+      };
+    }
+
+    const result = await publishContent({
+      platform: target,
+      imageUrl,
+      caption: post.caption,
+    });
+    const nextStatus: PostStatus = result.ok ? "published" : "failed";
+
+    const { data: updatedData, error: updateError } = await supabase
+      .from("posts")
+      .update({
+        platform: target,
+        status: nextStatus,
+        publish_error: result.error,
+        external_post_id: result.externalPostId,
+        published_at: result.ok ? now() : null,
+        updated_at: now(),
+      })
+      .eq("id", postId)
+      .select("*")
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return {
+      post: mapPostRow(updatedData as DbPostRow),
       result,
     };
   }
