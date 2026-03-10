@@ -83,12 +83,69 @@ function getSceneCameraDirection(scene: SceneTemplate) {
   }
 }
 
+function getSceneWardrobeDirection(scene: SceneTemplate) {
+  switch (scene.id) {
+    case "morning-coffee":
+      return "Wardrobe: soft morning loungewear or a simple knit top with relaxed home styling, not resortwear.";
+    case "kitchen-cooking":
+      return "Wardrobe: practical everyday home outfit, apron-friendly styling, natural domestic clothing layers.";
+    case "cafe-window":
+      return "Wardrobe: understated cafe look such as cardigan, blouse, denim, or clean city casual layers.";
+    case "bookstore":
+      return "Wardrobe: quiet intellectual city styling, layered blouse or knitwear, bookstore-appropriate everyday fashion.";
+    case "beach-walk":
+      return "Wardrobe: airy coastal outfit or tasteful beach styling that supports walking movement, not indoor clothing.";
+    case "poolside":
+      return "Wardrobe: refined resortwear or tasteful swim styling with cover-up elements, clearly poolside-specific.";
+    case "city-shopping":
+      return "Wardrobe: polished streetwear or smart casual shopping outfit, walking shoes or city-ready styling.";
+    case "mirror-selfie":
+      return "Wardrobe: everyday apartment outfit, fashion-forward but casual, clearly different from outdoor styling.";
+    case "sunset-balcony":
+      return "Wardrobe: relaxed evening homewear or elegant balcony outfit suited to sunset light and skyline context.";
+    case "casual-gym":
+      return "Wardrobe: premium activewear, gym-appropriate silhouette, visible athletic context rather than casual home clothes.";
+    case "weekend-brunch":
+      return "Wardrobe: bright weekend brunch look, day dress or polished casual set, table-ready styling.";
+    case "reading-sofa":
+      return "Wardrobe: cozy knitwear, lounge set, or soft indoor layers suited for reading at home.";
+    case "airport-waiting":
+      return "Wardrobe: travel outfit with light outer layer, comfortable airport styling, practical and polished.";
+    case "hotel-morning":
+      return "Wardrobe: tasteful hotel morning look, robe-inspired layering or elevated soft loungewear.";
+    case "car-selfie":
+      return "Wardrobe: on-the-go city outfit suited for travel by car, not static indoor resort styling.";
+    case "rainy-window":
+      return "Wardrobe: moody weather styling, cardigan, long sleeves, or layered rainy-day clothing.";
+    case "garden-afternoon":
+      return "Wardrobe: light garden-friendly daytime outfit, soft outdoor textures and breathable fabrics.";
+    case "rooftop-evening":
+      return "Wardrobe: evening city outfit, slightly elevated rooftop styling, not home loungewear.";
+    case "work-desk":
+      return "Wardrobe: clean work-from-home or creative studio outfit, polished but practical desk styling.";
+    case "casual-dinner":
+      return "Wardrobe: effortless evening dinner outfit, refined but not formal, restaurant-appropriate.";
+    default:
+      return "Wardrobe: outfit should clearly fit the chosen scene rather than echo the reference image clothing.";
+  }
+}
+
+function getShotVariationDirection(scene: SceneTemplate) {
+  return [
+    `Shot plan for ${scene.title}: vary composition across outputs with at least one medium shot, one wider environmental shot, and one different body angle or crop when multiple images are generated.`,
+    "Do not let every output use the same seated pose, centered framing, or straight-on camera angle.",
+    "Vary distance, lens feel, body rotation, eye-line, and hand placement while preserving the same identity.",
+  ].join(" ");
+}
+
 function getSceneVariationDirection(scene: SceneTemplate) {
   return [
     `Scene target: ${scene.title}.`,
     `Environment anchor: ${scene.promptTemplate}.`,
     getSceneActionDirection(scene),
     getSceneCameraDirection(scene),
+    getSceneWardrobeDirection(scene),
+    getShotVariationDirection(scene),
     "Background must clearly match the chosen scene and be visually different from the reference image location.",
     "Body position, hand placement, facial expression, crop, and camera angle should all be reinterpreted for this scene.",
   ].join(" ");
