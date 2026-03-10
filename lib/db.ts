@@ -232,6 +232,30 @@ function requireSql() {
   return sql;
 }
 
+function shouldBootstrapAfterError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const code = "code" in error ? String(error.code) : "";
+
+  // Undefined table / relation / column errors are safe to retry after bootstrap.
+  return code === "42P01" || code === "42703";
+}
+
+async function withBootstrapOnMissingSchema<T>(query: () => Promise<T>) {
+  try {
+    return await query();
+  } catch (error) {
+    if (!shouldBootstrapAfterError(error)) {
+      throw error;
+    }
+
+    await ensureDatabaseReady();
+    return query();
+  }
+}
+
 async function ensureDatabaseReady() {
   const sql = getSql();
 
@@ -340,102 +364,106 @@ async function ensureDatabaseReady() {
 
 async function listCharactersFromDb() {
   const sql = requireSql();
-  await ensureDatabaseReady();
-  const rows = await sql<DbCharacterRow[]>`
-    select
-      id,
-      name,
-      display_name as "displayName",
-      age_range as "ageRange",
-      identity_style as "identityStyle",
-      city,
-      bio,
-      vibe,
-      appearance_description as "appearanceDescription",
-      master_reference_image_url as "masterReferenceImageUrl",
-      style_prompt as "stylePrompt",
-      negative_prompt as "negativePrompt",
-      posting_tone as "postingTone",
-      is_active,
-      created_at as "createdAt",
-      updated_at as "updatedAt"
-    from characters
-    order by updated_at desc
-  `;
+  const rows = await withBootstrapOnMissingSchema(() =>
+    sql<DbCharacterRow[]>`
+      select
+        id,
+        name,
+        display_name as "displayName",
+        age_range as "ageRange",
+        identity_style as "identityStyle",
+        city,
+        bio,
+        vibe,
+        appearance_description as "appearanceDescription",
+        master_reference_image_url as "masterReferenceImageUrl",
+        style_prompt as "stylePrompt",
+        negative_prompt as "negativePrompt",
+        posting_tone as "postingTone",
+        is_active,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      from characters
+      order by updated_at desc
+    `,
+  );
 
   return rows.map(mapCharacterRow);
 }
 
 async function getCharacterFromDb(id: string) {
   const sql = requireSql();
-  await ensureDatabaseReady();
-  const rows = await sql<DbCharacterRow[]>`
-    select
-      id,
-      name,
-      display_name as "displayName",
-      age_range as "ageRange",
-      identity_style as "identityStyle",
-      city,
-      bio,
-      vibe,
-      appearance_description as "appearanceDescription",
-      master_reference_image_url as "masterReferenceImageUrl",
-      style_prompt as "stylePrompt",
-      negative_prompt as "negativePrompt",
-      posting_tone as "postingTone",
-      is_active,
-      created_at as "createdAt",
-      updated_at as "updatedAt"
-    from characters
-    where id = ${id}
-    limit 1
-  `;
+  const rows = await withBootstrapOnMissingSchema(() =>
+    sql<DbCharacterRow[]>`
+      select
+        id,
+        name,
+        display_name as "displayName",
+        age_range as "ageRange",
+        identity_style as "identityStyle",
+        city,
+        bio,
+        vibe,
+        appearance_description as "appearanceDescription",
+        master_reference_image_url as "masterReferenceImageUrl",
+        style_prompt as "stylePrompt",
+        negative_prompt as "negativePrompt",
+        posting_tone as "postingTone",
+        is_active,
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      from characters
+      where id = ${id}
+      limit 1
+    `,
+  );
 
   return rows[0] ? mapCharacterRow(rows[0]) : null;
 }
 
 async function listPostsFromDb() {
   const sql = requireSql();
-  await ensureDatabaseReady();
-  const rows = await sql<DbPostRow[]>`
-    select
-      id,
-      character_id,
-      generation_id,
-      platform,
-      caption,
-      caption_options,
-      status,
-      publish_error,
-      scheduled_at,
-      published_at,
-      external_post_id,
-      created_at,
-      updated_at
-    from posts
-    order by updated_at desc
-  `;
+  const rows = await withBootstrapOnMissingSchema(() =>
+    sql<DbPostRow[]>`
+      select
+        id,
+        character_id,
+        generation_id,
+        platform,
+        caption,
+        caption_options,
+        status,
+        publish_error,
+        scheduled_at,
+        published_at,
+        external_post_id,
+        created_at,
+        updated_at
+      from posts
+      order by updated_at desc
+    `,
+  );
 
   return rows.map(mapPostRow);
 }
 
 async function listGenerationsFromDb() {
   const sql = requireSql();
-  await ensureDatabaseReady();
-  const rows = await sql<DbGenerationRow[]>`
-    select
-      id,
-      character_id,
-      scene_template_id,
-      final_prompt as "finalPrompt",
-      image_urls,
-      selected_image_url,
-      status,
-      created_at
-    from generations
-    order by created_at desc
-  `;
+  const rows = await withBootstrapOnMissingSchema(() =>
+    sql<DbGenerationRow[]>`
+      select
+        id,
+        character_id,
+        scene_template_id,
+        final_prompt as "finalPrompt",
+        image_urls,
+        selected_image_url,
+        status,
+        created_at
+      from generations
+      order by created_at desc
+    `,
+  );
 
   return rows.map(mapGenerationRow);
 }

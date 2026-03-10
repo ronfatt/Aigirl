@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { listPosts } from "@/lib/db";
+import { getDatabaseSnapshot } from "@/lib/db";
 
 export async function GET() {
-  const posts = await listPosts();
-  return NextResponse.json({ posts });
+  const snapshot = await getDatabaseSnapshot();
+  return NextResponse.json(snapshot);
 }
