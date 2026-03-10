@@ -1,0 +1,77 @@
+import { Header } from "@/components/Header";
+
+const envKeys = [
+  "OPENAI_API_KEY",
+  "REPLICATE_API_TOKEN",
+  "BLOB_READ_WRITE_TOKEN",
+  "META_ACCESS_TOKEN",
+  "META_IG_BUSINESS_ID",
+  "META_FB_PAGE_ID",
+  "DATABASE_URL",
+];
+
+const docs = [
+  {
+    title: "OpenAI",
+    description: "Connect a real caption model in lib/caption-generator.ts.",
+  },
+  {
+    title: "Replicate",
+    description: "Connect Replicate Flux or another provider in lib/image-generator.ts.",
+  },
+  {
+    title: "Vercel Blob",
+    description: "Persist generated files via lib/blob.ts once image bytes are available.",
+  },
+  {
+    title: "Meta Graph API",
+    description: "Replace mock publishing in lib/meta-publisher.ts with the media container and publish flow.",
+  },
+  {
+    title: "Database",
+    description: "Swap the in-memory repository for Postgres or Supabase while keeping the route handlers stable.",
+  },
+];
+
+export default function SettingsPage() {
+  return (
+    <div>
+      <Header
+        title="Settings"
+        description="Keep all service credentials server-side only. This page documents setup without exposing secret values."
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
+        <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
+          <h3 className="text-lg font-semibold text-white">Environment keys</h3>
+          <p className="mt-2 text-sm text-zinc-400">
+            Add these to `.env.local` locally and to the Vercel project settings in production.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {envKeys.map((key) => (
+              <div
+                key={key}
+                className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3 font-mono text-sm text-zinc-200"
+              >
+                {key}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {docs.map((item) => (
+            <div
+              key={item.title}
+              className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel"
+            >
+              <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
