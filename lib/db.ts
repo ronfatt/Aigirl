@@ -157,29 +157,20 @@ function writeTimeoutError(label: string) {
   return new Error(`${label} timed out after ${WRITE_TIMEOUT_MS}ms.`);
 }
 
-async function withReadFallback<T>(label: string, read: () => Promise<T>, fallback: () => T) {
-  if (!hasDatabaseUrl) {
-    return fallback();
-  }
-
-  try {
-    return await Promise.race([
-      read(),
-      new Promise<T>((_, reject) => {
-        setTimeout(() => reject(timeoutError(label)), READ_TIMEOUT_MS);
-      }),
-    ]);
-  } catch (error) {
-    console.error(`${label} failed, using fallback data.`, error);
-    return fallback();
-  }
-}
-
 async function withWriteTimeout<T>(label: string, write: () => Promise<T>) {
   return Promise.race([
     write(),
     new Promise<T>((_, reject) => {
       setTimeout(() => reject(writeTimeoutError(label)), WRITE_TIMEOUT_MS);
+    }),
+  ]);
+}
+
+async function withReadTimeout<T>(label: string, read: () => Promise<T>) {
+  return Promise.race([
+    read(),
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(timeoutError(label)), READ_TIMEOUT_MS);
     }),
   ]);
 }
@@ -506,15 +497,19 @@ async function listGenerationsFromDb() {
 }
 
 export async function listCharacters() {
-  return withReadFallback("listCharacters", () => listCharactersFromDb(), () => getMemoryState().characters);
+  if (!hasDatabaseUrl) {
+    return getMemoryState().characters;
+  }
+
+  return withReadTimeout("listCharacters", () => listCharactersFromDb());
 }
 
 export async function getCharacter(id: string) {
-  return withReadFallback(
-    "getCharacter",
-    () => getCharacterFromDb(id),
-    () => getMemoryState().characters.find((character) => character.id === id) ?? null,
-  );
+  if (!hasDatabaseUrl) {
+    return getMemoryState().characters.find((character) => character.id === id) ?? null;
+  }
+
+  return withReadTimeout("getCharacter", () => getCharacterFromDb(id));
 }
 
 export async function createCharacter(input: CharacterInput) {
@@ -663,8 +658,41 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
   return mapCharacterRow(rows[0]);
 }
 
+export async function deleteCharacter(id: string) {
+  if (!hasDatabaseUrl) {
+    const state = getMemoryState();
+    const index = state.characters.findIndex((character) => character.id === id);
+
+    if (index === -1) {
+      return false;
+    }
+
+    state.characters.splice(index, 1);
+    state.generations = state.generations.filter((generation) => generation.characterId !== id);
+    state.posts = state.posts.filter((post) => post.characterId !== id);
+    return true;
+  }
+
+  const sql = requireSql();
+  const deletedRows = await withWriteTimeout("deleteCharacter", async () => {
+    await ensureDatabaseReady();
+
+    return sql<{ id: string }[]>`
+      delete from characters
+      where id = ${id}
+      returning id
+    `;
+  });
+
+  return deletedRows.length > 0;
+}
+
 export async function listPosts() {
-  return withReadFallback("listPosts", () => listPostsFromDb(), () => getMemoryState().posts);
+  if (!hasDatabaseUrl) {
+    return getMemoryState().posts;
+  }
+
+  return withReadTimeout("listPosts", () => listPostsFromDb());
 }
 
 export async function updatePost(
@@ -1221,33 +1249,23 @@ export async function getDashboardData(): Promise<DashboardPayload> {
     return buildPayload(getMemoryState());
   }
 
-  const snapshot = await withReadFallback(
-    "getDashboardData",
-    async () => {
-      const [characters, generations, posts] = await Promise.all([
-        listCharactersFromDb(),
-        listGenerationsFromDb(),
-        listPostsFromDb(),
-      ]);
-
-      return { characters, generations, posts };
-    },
-    () => getMemoryState(),
+  const [characters, generations, posts] = await withReadTimeout("getDashboardData", async () =>
+    Promise.all([listCharactersFromDb(), listGenerationsFromDb(), listPostsFromDb()]),
   );
 
   return {
     metrics: {
-      totalCharacters: snapshot.characters.length,
-      totalGeneratedImages: snapshot.generations.reduce(
+      totalCharacters: characters.length,
+      totalGeneratedImages: generations.reduce(
         (total, generation) => total + generation.imageUrls.length,
         0,
       ),
-      totalDraftedPosts: snapshot.posts.filter((post) => post.status === "draft").length,
-      totalPublishedPosts: snapshot.posts.filter((post) => post.status === "published").length,
+      totalDraftedPosts: posts.filter((post) => post.status === "draft").length,
+      totalPublishedPosts: posts.filter((post) => post.status === "published").length,
     },
-    recentGenerations: snapshot.generations.slice(0, 5).map((generation) => {
+    recentGenerations: generations.slice(0, 5).map((generation) => {
       const characterName =
-        snapshot.characters.find((item) => item.id === generation.characterId)?.displayName ?? "Unknown";
+        characters.find((item) => item.id === generation.characterId)?.displayName ?? "Unknown";
       const sceneTitle =
         sceneLibrary.find((item) => item.id === generation.sceneTemplateId)?.title ?? "Scene";
 
@@ -1257,11 +1275,11 @@ export async function getDashboardData(): Promise<DashboardPayload> {
         sceneTitle,
       };
     }),
-    recentPosts: snapshot.posts.slice(0, 5).map((post) => {
+    recentPosts: posts.slice(0, 5).map((post) => {
       const characterName =
-        snapshot.characters.find((item) => item.id === post.characterId)?.displayName ?? "Unknown";
+        characters.find((item) => item.id === post.characterId)?.displayName ?? "Unknown";
       const imageUrl =
-        snapshot.generations.find((item) => item.id === post.generationId)?.selectedImageUrl ?? null;
+        generations.find((item) => item.id === post.generationId)?.selectedImageUrl ?? null;
 
       return {
         ...post,
@@ -1273,21 +1291,17 @@ export async function getDashboardData(): Promise<DashboardPayload> {
 }
 
 export async function getDatabaseSnapshot() {
-  return withReadFallback(
-    "getDatabaseSnapshot",
-    async () => {
-      const [characters, generations, posts] = await Promise.all([
-        listCharactersFromDb(),
-        listGenerationsFromDb(),
-        listPostsFromDb(),
-      ]);
+  if (!hasDatabaseUrl) {
+    return getMemoryState();
+  }
 
-      return {
-        characters,
-        generations,
-        posts,
-      };
-    },
-    () => getMemoryState(),
+  const [characters, generations, posts] = await withReadTimeout("getDatabaseSnapshot", async () =>
+    Promise.all([listCharactersFromDb(), listGenerationsFromDb(), listPostsFromDb()]),
   );
+
+  return {
+    characters,
+    generations,
+    posts,
+  };
 }
