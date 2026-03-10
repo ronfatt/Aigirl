@@ -69,8 +69,8 @@ declare global {
 
 const now = () => new Date().toISOString();
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
-const READ_TIMEOUT_MS = 2500;
-const WRITE_TIMEOUT_MS = 5000;
+const READ_TIMEOUT_MS = 8000;
+const WRITE_TIMEOUT_MS = 12000;
 
 function createSeedState(): DatabaseState {
   const timestamp = now();

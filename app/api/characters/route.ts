@@ -3,8 +3,15 @@ import { createCharacter, listCharacters } from "@/lib/db";
 import { CharacterInput } from "@/lib/types";
 
 export async function GET() {
-  const characters = await listCharacters();
-  return NextResponse.json({ characters });
+  try {
+    const characters = await listCharacters();
+    return NextResponse.json({ characters });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to load characters." },
+      { status: 503 },
+    );
+  }
 }
 
 export async function POST(request: Request) {
