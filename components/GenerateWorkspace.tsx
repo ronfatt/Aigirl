@@ -35,6 +35,7 @@ export function GenerateWorkspace({
   const [captionOptions, setCaptionOptions] = useState<string[]>([]);
   const [selectedCaption, setSelectedCaption] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(initialCharacters.length === 0);
@@ -58,33 +59,51 @@ export function GenerateWorkspace({
       setLoadingHistory(true);
 
       try {
-        const [charactersResponse, historyResponse] = await Promise.all([
-          fetch("/api/characters"),
-          fetch("/api/generations"),
-        ]);
+        const charactersResponse = await fetch("/api/characters");
 
         if (!charactersResponse.ok) {
           throw new Error("Unable to load characters.");
         }
 
-        if (!historyResponse.ok) {
-          throw new Error("Unable to load generation history.");
-        }
-
         const charactersPayload = (await charactersResponse.json()) as { characters: Character[] };
-        const historyPayload = (await historyResponse.json()) as { generations: GenerationHistoryItem[] };
 
         if (!active) {
           return;
         }
 
         setCharacters(charactersPayload.characters);
-        setHistory(historyPayload.generations);
         setCharacterId(
           charactersPayload.characters.find((item) => item.isActive)?.id ??
             charactersPayload.characters[0]?.id ??
             "",
         );
+
+        try {
+          const historyResponse = await fetch("/api/generations");
+
+          if (!historyResponse.ok) {
+            const payload = (await historyResponse.json()) as { error?: string };
+            throw new Error(payload.error || "Unable to load generation history.");
+          }
+
+          const historyPayload = (await historyResponse.json()) as {
+            generations: GenerationHistoryItem[];
+          };
+
+          if (active) {
+            setHistory(historyPayload.generations);
+            setHistoryError(null);
+          }
+        } catch (historyLoadError) {
+          if (active) {
+            setHistory([]);
+            setHistoryError(
+              historyLoadError instanceof Error
+                ? historyLoadError.message
+                : "Unable to load generation history.",
+            );
+          }
+        }
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Unable to load page.");
@@ -122,11 +141,19 @@ export function GenerateWorkspace({
       const response = await fetch("/api/generations");
 
       if (!response.ok) {
-        throw new Error("Unable to load generation history.");
+        const payload = (await response.json()) as { error?: string };
+        throw new Error(payload.error || "Unable to load generation history.");
       }
 
       const payload = (await response.json()) as { generations: GenerationHistoryItem[] };
       setHistory(payload.generations);
+      setHistoryError(null);
+    } catch (refreshError) {
+      setHistoryError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Unable to load generation history.",
+      );
     } finally {
       setLoadingHistory(false);
     }
@@ -390,6 +417,8 @@ export function GenerateWorkspace({
           </div>
           <p className="text-sm text-zinc-500">{history.length} records</p>
         </div>
+
+        {historyError ? <p className="mb-4 text-sm text-amber-300">{historyError}</p> : null}
 
         {loadingHistory ? <LoadingState label="Refreshing history" /> : null}
 
