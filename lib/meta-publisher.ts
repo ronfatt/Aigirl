@@ -25,6 +25,30 @@ function canPublishToFacebook() {
   return Boolean(config.accessToken && config.fbPageId);
 }
 
+async function getFacebookPageContext() {
+  const { accessToken, fbPageId } = getMetaConfig();
+
+  const page = await metaGet(`/${fbPageId}`, {
+    fields: "id,name,access_token",
+    access_token: accessToken,
+  });
+
+  const pageAccessToken =
+    typeof page.access_token === "string" ? page.access_token : null;
+
+  if (!pageAccessToken) {
+    throw new Error(
+      "Facebook Page access token was not returned. Check pages_show_list, pages_read_engagement, and pages_manage_posts permissions for this user.",
+    );
+  }
+
+  return {
+    pageId: typeof page.id === "string" ? page.id : fbPageId,
+    pageName: typeof page.name === "string" ? page.name : null,
+    pageAccessToken,
+  };
+}
+
 async function metaFormPost(path: string, params: Record<string, string>) {
   const body = new URLSearchParams(params);
   const response = await fetch(`${META_GRAPH_BASE_URL}${path}`, {
@@ -136,18 +160,19 @@ export async function publishToFacebook(
     return publishMock("facebook");
   }
 
-  const { accessToken, fbPageId } = getMetaConfig();
+  const { fbPageId } = getMetaConfig();
 
   try {
     // Production hardening still needed:
     // - validate page permissions and long-lived token freshness
     // - store raw response metadata for audit/debugging
     // - add retry logic for transient Graph API errors
+    const page = await getFacebookPageContext();
     const published = await metaFormPost(`/${fbPageId}/photos`, {
       url: imageUrl,
       caption,
       published: "true",
-      access_token: accessToken,
+      access_token: page.pageAccessToken,
     });
     const externalPostId =
       typeof published.post_id === "string"
@@ -243,10 +268,7 @@ export async function testFacebookConnection(): Promise<MetaConnectionTestResult
 
   try {
     const [page, permissions] = await Promise.all([
-      metaGet(`/${fbPageId}`, {
-        fields: "id,name",
-        access_token: accessToken,
-      }),
+      getFacebookPageContext(),
       metaGet("/me/permissions", {
         access_token: accessToken,
       }),
@@ -258,10 +280,11 @@ export async function testFacebookConnection(): Promise<MetaConnectionTestResult
       ok: true,
       platform: "facebook",
       mode: "live",
-      message: "Facebook Page connection looks valid. The token can read the configured page.",
+      message:
+        "Facebook Page connection looks valid. The user token can fetch a Page access token for the configured page.",
       details: {
-        pageId: typeof page.id === "string" ? page.id : fbPageId,
-        pageName: typeof page.name === "string" ? page.name : null,
+        pageId: page.pageId ?? fbPageId,
+        pageName: page.pageName,
         tokenScopeCount: permissionEntries.length,
       },
     };
