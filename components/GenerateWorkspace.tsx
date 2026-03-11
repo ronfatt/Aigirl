@@ -158,6 +158,9 @@ export function GenerateWorkspace({
   const currentCharacter = characters.find((item) => item.id === characterId) ?? null;
   const currentScene = sceneLibrary.find((item) => item.id === sceneId) ?? sceneLibrary[0];
   const sensualScenes = sceneLibrary.filter((scene) => sensualSceneIds.includes(scene.id));
+  const visiblePresets = promptPresets.filter(
+    (preset) => !preset.modes || preset.modes.includes(mode),
+  );
   const contentMix = getContentMixSummary(history);
   const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene) : null;
   const promptPreview =
@@ -490,7 +493,9 @@ export function GenerateWorkspace({
                 <div>
                   <h3 className="text-sm font-medium text-white">Prompt presets</h3>
                   <p className="mt-1 text-xs text-zinc-400">
-                    Click a preset to fill the custom override with a reusable body/style prompt.
+                    {mode === "sensual"
+                      ? "Sensual mode presets focus on softer glamour, fitted styling, and more alluring scene direction."
+                      : "Click a preset to fill the custom override with a reusable body/style prompt."}
                   </p>
                 </div>
                 {selectedPresetId ? (
@@ -508,7 +513,7 @@ export function GenerateWorkspace({
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {promptPresets.map((preset) => {
+                {visiblePresets.map((preset) => {
                   const isSelected = preset.id === selectedPresetId;
 
                   return (
