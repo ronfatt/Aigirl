@@ -25,6 +25,16 @@ export function GenerateWorkspace({
   initialCharacters,
   initialHistory,
 }: GenerateWorkspaceProps) {
+  const sensualSceneIds = [
+    "mirror-selfie",
+    "hotel-morning",
+    "sunset-balcony",
+    "poolside",
+    "beach-walk",
+    "reading-sofa",
+    "rainy-window",
+    "rooftop-evening",
+  ];
   const styleModes: Array<{ value: StyleMode; label: string; description: string }> = [
     {
       value: "lifestyle",
@@ -147,6 +157,7 @@ export function GenerateWorkspace({
 
   const currentCharacter = characters.find((item) => item.id === characterId) ?? null;
   const currentScene = sceneLibrary.find((item) => item.id === sceneId) ?? sceneLibrary[0];
+  const sensualScenes = sceneLibrary.filter((scene) => sensualSceneIds.includes(scene.id));
   const contentMix = getContentMixSummary(history);
   const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene) : null;
   const promptPreview =
@@ -390,6 +401,51 @@ export function GenerateWorkspace({
                 })}
               </div>
             </div>
+
+            {mode === "sensual" ? (
+              <div className="mt-5 rounded-2xl border border-rose-300/15 bg-rose-400/[0.04] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-white">Sensual scene recommendations</h3>
+                    <p className="mt-1 text-xs leading-5 text-zinc-400">
+                      These scenes are tuned for a softer, more alluring result without pushing into explicit content.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-rose-200/15 bg-rose-200/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-rose-200">
+                    Sensual mode
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {sensualScenes.map((scene) => {
+                    const active = scene.id === sceneId;
+
+                    return (
+                      <button
+                        key={scene.id}
+                        type="button"
+                        onClick={() => setSceneId(scene.id)}
+                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                          active
+                            ? "border-rose-200/30 bg-rose-200/12"
+                            : "border-white/10 bg-black/10 hover:border-rose-200/20 hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-white">{scene.title}</p>
+                            <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+                              {scene.category}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-xs leading-5 text-zinc-400">{scene.captionHint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             <Field label="Custom prompt override">
               <textarea
