@@ -85,6 +85,7 @@ export function GenerateWorkspace({
   const [sceneId, setSceneId] = useState(sceneLibrary[0]?.id ?? "");
   const [mode, setMode] = useState<StyleMode>("lifestyle");
   const [sensualPoseBias, setSensualPoseBias] = useState<SensualPoseBias>("soft glam");
+  const [sensualSexyTarget, setSensualSexyTarget] = useState(15);
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [imageCount, setImageCount] = useState(2);
@@ -189,8 +190,8 @@ export function GenerateWorkspace({
   const visiblePresets = promptPresets.filter(
     (preset) => !preset.modes || preset.modes.includes(mode),
   );
-  const contentMix = getContentMixSummary(history, mode);
-  const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene, mode) : null;
+  const contentMix = getContentMixSummary(history, mode, sensualSexyTarget);
+  const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene, mode, sensualSexyTarget) : null;
   const promptPreview =
     currentCharacter && currentScene
       ? composeImagePrompt({
@@ -511,6 +512,35 @@ export function GenerateWorkspace({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            ) : null}
+
+            {mode === "sensual" ? (
+              <div className="mt-5 rounded-2xl border border-rose-300/15 bg-rose-400/[0.04] p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-white">Sexy target</h3>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      Base target starts at 15%. Raise it up to 30% for a more sensual content mix.
+                    </p>
+                  </div>
+                  <p className="text-sm font-medium text-rose-200">{sensualSexyTarget}%</p>
+                </div>
+
+                <input
+                  type="range"
+                  min={15}
+                  max={30}
+                  step={1}
+                  value={sensualSexyTarget}
+                  onChange={(event) => setSensualSexyTarget(Number(event.target.value))}
+                  className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-rose-300"
+                />
+
+                <div className="mt-2 flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+                  <span>Base 15%</span>
+                  <span>Max 30%</span>
                 </div>
               </div>
             ) : null}

@@ -35,17 +35,22 @@ const defaultBucketPlans: Record<ContentBucket, BucketPlan> = {
   },
 };
 
-function getBucketPlans(mode: StyleMode) {
+function getBucketPlans(mode: StyleMode, sensualSexyTarget = 15) {
   if (mode === "sensual") {
+    const sexyTarget = Math.max(15, Math.min(30, sensualSexyTarget));
+    const delta = sexyTarget - 15;
+    const selfieReduction = Math.round(delta * 0.6);
+    const lifestyleReduction = delta - selfieReduction;
+
     return {
       ...defaultBucketPlans,
       selfie: {
         ...defaultBucketPlans.selfie,
-        targetPercent: 30,
+        targetPercent: 30 - selfieReduction,
       },
       lifestyle: {
         ...defaultBucketPlans.lifestyle,
-        targetPercent: 20,
+        targetPercent: 25 - lifestyleReduction,
       },
       travel: {
         ...defaultBucketPlans.travel,
@@ -57,7 +62,7 @@ function getBucketPlans(mode: StyleMode) {
       },
       sexy: {
         ...defaultBucketPlans.sexy,
-        targetPercent: 20,
+        targetPercent: sexyTarget,
         sceneIds: [
           "poolside",
           "hotel-morning",
@@ -81,8 +86,12 @@ function getBucketForScene(sceneId: string, bucketPlans: Record<ContentBucket, B
   return "lifestyle";
 }
 
-export function getContentMixSummary(history: GenerationHistoryItem[], mode: StyleMode = "lifestyle") {
-  const bucketPlans = getBucketPlans(mode);
+export function getContentMixSummary(
+  history: GenerationHistoryItem[],
+  mode: StyleMode = "lifestyle",
+  sensualSexyTarget = 15,
+) {
+  const bucketPlans = getBucketPlans(mode, sensualSexyTarget);
   const total = history.length || 1;
 
   const actualPercentages = (Object.keys(bucketPlans) as ContentBucket[]).map((bucket) => {
@@ -113,13 +122,17 @@ export function getContentMixSummary(history: GenerationHistoryItem[], mode: Sty
     recommendedScene,
     mixLabel:
       mode === "sensual"
-        ? "30% selfie, 20% lifestyle, 20% travel, 10% gym, 20% sexy"
+        ? `${bucketPlans.selfie.targetPercent}% selfie, ${bucketPlans.lifestyle.targetPercent}% lifestyle, 20% travel, 10% gym, ${bucketPlans.sexy.targetPercent}% sexy`
         : "35% selfie, 25% lifestyle, 20% travel, 10% gym, 10% sexy",
   };
 }
 
-export function getSceneRatioHint(scene: SceneTemplate, mode: StyleMode = "lifestyle") {
-  const bucketPlans = getBucketPlans(mode);
+export function getSceneRatioHint(
+  scene: SceneTemplate,
+  mode: StyleMode = "lifestyle",
+  sensualSexyTarget = 15,
+) {
+  const bucketPlans = getBucketPlans(mode, sensualSexyTarget);
   const bucket = getBucketForScene(scene.id, bucketPlans);
   return bucketPlans[bucket];
 }
