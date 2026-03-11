@@ -152,3 +152,5 @@ export interface MetaConnectionTestResult {
     tokenScopeCount?: number;
   };
 }
+
+export type ContentBucket = "selfie" | "lifestyle" | "travel" | "gym" | "sexy";

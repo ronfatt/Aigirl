@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { PromptPreview } from "@/components/PromptPreview";
 import { SceneSelector } from "@/components/SceneSelector";
 import { promptPresets } from "@/lib/prompt-presets";
+import { getContentMixSummary, getSceneRatioHint } from "@/lib/content-strategy";
 import { sceneLibrary } from "@/lib/scene-library";
 import { Character, Generation, GenerationHistoryItem } from "@/lib/types";
 import { composeImagePrompt } from "@/lib/prompts";
@@ -127,6 +128,8 @@ export function GenerateWorkspace({
 
   const currentCharacter = characters.find((item) => item.id === characterId) ?? null;
   const currentScene = sceneLibrary.find((item) => item.id === sceneId) ?? sceneLibrary[0];
+  const contentMix = getContentMixSummary(history);
+  const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene) : null;
   const promptPreview =
     currentCharacter && currentScene
       ? composeImagePrompt({
@@ -345,6 +348,34 @@ export function GenerateWorkspace({
             </Field>
 
             <div className="mt-5">
+              <div className="mb-5 rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-white">Content ratio strategy</h3>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      Target mix: 35% selfie, 25% lifestyle, 20% travel, 10% gym, 10% sexy.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSceneId(contentMix.recommendedScene.id)}
+                    className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs text-white transition hover:bg-white/10"
+                  >
+                    Use recommended scene: {contentMix.recommendedScene.title}
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-5">
+                  {contentMix.buckets.map((bucket) => (
+                    <div key={bucket.bucket} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{bucket.label}</p>
+                      <p className="mt-2 text-sm text-white">{bucket.actualPercent}%</p>
+                      <p className="text-xs text-zinc-400">Target {bucket.targetPercent}%</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-medium text-white">Prompt presets</h3>
@@ -406,7 +437,11 @@ export function GenerateWorkspace({
               {draftPostId ? (
                 <p className="text-sm text-zinc-400">Draft post created: {draftPostId}</p>
               ) : (
-                <p className="text-sm text-zinc-500">Draft post will be created after approval.</p>
+                <p className="text-sm text-zinc-500">
+                  {sceneRatioHint
+                    ? `${sceneRatioHint.label} content. Draft post will be created after approval.`
+                    : "Draft post will be created after approval."}
+                </p>
               )}
             </div>
             {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
