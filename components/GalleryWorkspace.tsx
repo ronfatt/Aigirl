@@ -21,6 +21,7 @@ export function GalleryWorkspace() {
   const [statusFilter, setStatusFilter] = useState<GenerationHistoryItem["status"] | "all">("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [approvedOnly, setApprovedOnly] = useState(false);
+  const [publishReadyOnly, setPublishReadyOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
   async function loadHistory() {
@@ -59,9 +60,10 @@ export function GalleryWorkspace() {
         if (statusFilter !== "all" && item.status !== statusFilter) return false;
         if (favoritesOnly && !item.isFavorite) return false;
         if (approvedOnly && item.status !== "approved") return false;
+        if (publishReadyOnly && !item.qualityTags.includes("publish-ready")) return false;
         return true;
       }),
-    [approvedOnly, favoritesOnly, history, modeFilter, sceneFilter, showArchived, statusFilter],
+    [approvedOnly, favoritesOnly, history, modeFilter, publishReadyOnly, sceneFilter, showArchived, statusFilter],
   );
 
   async function patchGeneration(id: string, payload: {
@@ -138,6 +140,14 @@ export function GalleryWorkspace() {
     );
   }
 
+  function activateApprovedFavoritesView() {
+    setFavoritesOnly(true);
+    setApprovedOnly(true);
+    setPublishReadyOnly(true);
+    setShowArchived(false);
+    setStatusFilter("all");
+  }
+
   return (
     <div>
       <Header
@@ -145,7 +155,28 @@ export function GalleryWorkspace() {
         description="Browse all generated assets, batch-manage your library, and recover approved visuals faster."
       />
 
-      <div className="mb-6 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-4 flex flex-wrap gap-3">
+        <button type="button" onClick={activateApprovedFavoritesView} className={batchButtonClassName}>
+          Approved favorites
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setModeFilter("all");
+            setSceneFilter("all");
+            setStatusFilter("all");
+            setFavoritesOnly(false);
+            setApprovedOnly(false);
+            setPublishReadyOnly(false);
+            setShowArchived(false);
+          }}
+          className={batchButtonClassName}
+        >
+          Clear quick views
+        </button>
+      </div>
+
+      <div className="mb-6 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
         <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value as StyleMode | "all")} className={inputClassName}>
           <option value="all">All modes</option>
           <option value="lifestyle">Lifestyle</option>
@@ -175,6 +206,9 @@ export function GalleryWorkspace() {
         </button>
         <button type="button" onClick={() => setApprovedOnly((value) => !value)} className={toggleClassName(approvedOnly)}>
           Approved only
+        </button>
+        <button type="button" onClick={() => setPublishReadyOnly((value) => !value)} className={toggleClassName(publishReadyOnly)}>
+          Publish-ready only
         </button>
         <button type="button" onClick={() => setShowArchived((value) => !value)} className={toggleClassName(showArchived)}>
           {showArchived ? "Hide archive" : "Show archive"}

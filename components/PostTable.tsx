@@ -17,6 +17,7 @@ interface PostTableProps {
 export function PostTable({ posts, characters, generations }: PostTableProps) {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
+  const [publishReadyOnly, setPublishReadyOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -26,9 +27,15 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
       posts.filter((post) => {
         if (platformFilter !== "all" && post.platform !== platformFilter) return false;
         if (statusFilter !== "all" && post.status !== statusFilter) return false;
+        if (publishReadyOnly) {
+          const generation = generations.find((item) => item.id === post.generationId);
+          if (!generation?.qualityTags.includes("publish-ready")) {
+            return false;
+          }
+        }
         return true;
       }),
-    [platformFilter, posts, statusFilter],
+    [generations, platformFilter, posts, publishReadyOnly, statusFilter],
   );
 
   function toggleSelection(id: string) {
@@ -103,6 +110,13 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
           <option value="published">Published</option>
           <option value="failed">Failed</option>
         </select>
+        <button
+          type="button"
+          onClick={() => setPublishReadyOnly((value) => !value)}
+          className={toggleClassName(publishReadyOnly)}
+        >
+          Publish-ready only
+        </button>
 
         <p className="text-sm text-zinc-400">{selectedIds.length} selected</p>
 
@@ -216,3 +230,9 @@ const inputClassName =
 
 const batchButtonClassName =
   "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]";
+
+function toggleClassName(active: boolean) {
+  return `rounded-2xl border px-4 py-3 text-sm transition ${
+    active ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/10 text-zinc-400"
+  }`;
+}
