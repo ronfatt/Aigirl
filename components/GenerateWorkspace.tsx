@@ -33,6 +33,7 @@ export function GenerateWorkspace({
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [imageCount, setImageCount] = useState(2);
   const [generation, setGeneration] = useState<Generation | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [draftPostId, setDraftPostId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [captionOptions, setCaptionOptions] = useState<string[]>([]);
@@ -469,6 +470,7 @@ export function GenerateWorkspace({
             images={generation.imageUrls}
             selectedImage={selectedImage}
             onSelect={handleSelectImage}
+            onPreview={setPreviewImageUrl}
           />
         </div>
       ) : null}
@@ -577,6 +579,29 @@ export function GenerateWorkspace({
                     <p className="text-sm text-zinc-400">
                       Post: {item.linkedPostId ? `${item.linkedPostId} • ${item.linkedPostStatus}` : "Not created yet"}
                     </p>
+
+                    {item.imageUrls.length ? (
+                      <div className="grid grid-cols-4 gap-2 pt-2">
+                        {item.imageUrls.slice(0, 4).map((imageUrl) => (
+                          <button
+                            key={imageUrl}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPreviewImageUrl(imageUrl);
+                            }}
+                            className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10 bg-white/5"
+                          >
+                            <Image
+                              src={imageUrl}
+                              alt={`${item.characterName} history`}
+                              fill
+                              className="object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </button>
               );
@@ -584,6 +609,29 @@ export function GenerateWorkspace({
           </div>
         ) : null}
       </div>
+
+      {previewImageUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl overflow-hidden rounded-[1.6rem] border border-white/10 bg-black"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImageUrl(null)}
+              className="absolute right-4 top-4 z-10 rounded-full border border-white/15 bg-black/50 px-3 py-1 text-sm text-white transition hover:bg-black/70"
+            >
+              Close
+            </button>
+            <div className="relative aspect-[4/5] w-full bg-black">
+              <Image src={previewImageUrl} alt="Preview" fill className="object-contain" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
