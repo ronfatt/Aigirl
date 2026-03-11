@@ -25,8 +25,9 @@ export async function generateImages(input: {
   referenceImageUrl?: string;
 }) {
   const count = Math.min(Math.max(input.count, 1), 4);
+  const allowMockFallback = !process.env.REPLICATE_API_TOKEN;
 
-  if (!process.env.REPLICATE_API_TOKEN) {
+  if (allowMockFallback) {
     return generateMockImages({
       finalPrompt: input.finalPrompt,
       count,
@@ -50,12 +51,12 @@ export async function generateImages(input: {
       }),
     );
   } catch (error) {
-    console.error("Replicate generation failed, falling back to mock images.", error);
-
-    return generateMockImages({
-      finalPrompt: input.finalPrompt,
-      count,
-    });
+    console.error("Replicate generation failed.", error);
+    throw new Error(
+      error instanceof Error
+        ? `Replicate generation failed: ${error.message}`
+        : "Replicate generation failed.",
+    );
   }
 }
 
