@@ -189,8 +189,8 @@ export function GenerateWorkspace({
   const visiblePresets = promptPresets.filter(
     (preset) => !preset.modes || preset.modes.includes(mode),
   );
-  const contentMix = getContentMixSummary(history);
-  const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene) : null;
+  const contentMix = getContentMixSummary(history, mode);
+  const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene, mode) : null;
   const promptPreview =
     currentCharacter && currentScene
       ? composeImagePrompt({
@@ -531,7 +531,7 @@ export function GenerateWorkspace({
                   <div>
                     <h3 className="text-sm font-medium text-white">Content ratio strategy</h3>
                     <p className="mt-1 text-xs text-zinc-400">
-                      Target mix: 35% selfie, 25% lifestyle, 20% travel, 10% gym, 10% sexy.
+                      Target mix: {contentMix.mixLabel}.
                     </p>
                   </div>
                   <button
