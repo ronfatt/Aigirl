@@ -9,6 +9,7 @@ import { ImageGrid } from "@/components/ImageGrid";
 import { LoadingState } from "@/components/LoadingState";
 import { PromptPreview } from "@/components/PromptPreview";
 import { SceneSelector } from "@/components/SceneSelector";
+import { promptPresets } from "@/lib/prompt-presets";
 import { sceneLibrary } from "@/lib/scene-library";
 import { Character, Generation, GenerationHistoryItem } from "@/lib/types";
 import { composeImagePrompt } from "@/lib/prompts";
@@ -28,6 +29,7 @@ export function GenerateWorkspace({
   const [characterId, setCharacterId] = useState("");
   const [sceneId, setSceneId] = useState(sceneLibrary[0]?.id ?? "");
   const [customPrompt, setCustomPrompt] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [imageCount, setImageCount] = useState(2);
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [draftPostId, setDraftPostId] = useState<string | null>(null);
@@ -133,6 +135,17 @@ export function GenerateWorkspace({
           customPrompt,
         })
       : "Select an active character to preview the prompt.";
+
+  function applyPreset(presetId: string) {
+    const preset = promptPresets.find((item) => item.id === presetId);
+
+    if (!preset) {
+      return;
+    }
+
+    setSelectedPresetId(preset.id);
+    setCustomPrompt(preset.prompt);
+  }
 
   async function refreshHistory() {
     setLoadingHistory(true);
@@ -330,6 +343,56 @@ export function GenerateWorkspace({
                 placeholder="Optional direction for this specific scene."
               />
             </Field>
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium text-white">Prompt presets</h3>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    Click a preset to fill the custom override with a reusable body/style prompt.
+                  </p>
+                </div>
+                {selectedPresetId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPresetId("");
+                      setCustomPrompt("");
+                    }}
+                    className="text-xs text-zinc-400 transition hover:text-white"
+                  >
+                    Clear preset
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {promptPresets.map((preset) => {
+                  const isSelected = preset.id === selectedPresetId;
+
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyPreset(preset.id)}
+                      className={`rounded-2xl border px-4 py-4 text-left transition ${
+                        isSelected
+                          ? "border-white/30 bg-white/10"
+                          : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-white">{preset.title}</p>
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+                          {preset.category}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-zinc-400">{preset.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="mt-5 flex items-center gap-3">
               <button
