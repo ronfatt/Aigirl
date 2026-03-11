@@ -2,6 +2,7 @@ export type Platform = "facebook" | "instagram" | "both";
 export type PostStatus = "draft" | "queued" | "published" | "failed";
 export type GenerationStatus = "draft" | "completed" | "approved" | "failed";
 export type RiskLevel = "safe" | "suggestive" | "restricted";
+export type StyleMode = "lifestyle" | "selfie" | "sensual";
 export type PostingTone =
   | "soft lifestyle"
   | "casual intimate"
@@ -106,6 +107,7 @@ export interface GenerateImageInput {
   sceneTemplateId: string;
   customPrompt?: string;
   imageCount: number;
+  mode?: StyleMode;
 }
 
 export interface CaptionInput {

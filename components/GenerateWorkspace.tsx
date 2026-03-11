@@ -12,7 +12,7 @@ import { SceneSelector } from "@/components/SceneSelector";
 import { promptPresets } from "@/lib/prompt-presets";
 import { getContentMixSummary, getSceneRatioHint } from "@/lib/content-strategy";
 import { sceneLibrary } from "@/lib/scene-library";
-import { Character, Generation, GenerationHistoryItem } from "@/lib/types";
+import { Character, Generation, GenerationHistoryItem, StyleMode } from "@/lib/types";
 import { composeImagePrompt } from "@/lib/prompts";
 import { formatDate } from "@/lib/utils";
 
@@ -25,10 +25,28 @@ export function GenerateWorkspace({
   initialCharacters,
   initialHistory,
 }: GenerateWorkspaceProps) {
+  const styleModes: Array<{ value: StyleMode; label: string; description: string }> = [
+    {
+      value: "lifestyle",
+      label: "Lifestyle",
+      description: "Natural everyday persona content with soft candid energy.",
+    },
+    {
+      value: "selfie",
+      label: "Selfie",
+      description: "More handheld, phone-shot, personal-post framing.",
+    },
+    {
+      value: "sensual",
+      label: "Sensual",
+      description: "More polished, feminine, and alluring without explicit content.",
+    },
+  ];
   const [characters, setCharacters] = useState<Character[]>(initialCharacters);
   const [history, setHistory] = useState<GenerationHistoryItem[]>(initialHistory);
   const [characterId, setCharacterId] = useState("");
   const [sceneId, setSceneId] = useState(sceneLibrary[0]?.id ?? "");
+  const [mode, setMode] = useState<StyleMode>("lifestyle");
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [imageCount, setImageCount] = useState(2);
@@ -137,6 +155,7 @@ export function GenerateWorkspace({
           character: currentCharacter,
           scene: currentScene,
           customPrompt,
+          mode,
         })
       : "Select an active character to preview the prompt.";
 
@@ -209,6 +228,7 @@ export function GenerateWorkspace({
             sceneTemplateId: sceneId,
             customPrompt,
             imageCount,
+            mode,
           }),
         });
 
@@ -336,6 +356,39 @@ export function GenerateWorkspace({
                   ))}
                 </select>
               </Field>
+            </div>
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium text-white">Style mode</h3>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    Choose how the scene should feel before prompt overrides are applied.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {styleModes.map((item) => {
+                  const active = item.value === mode;
+
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setMode(item.value)}
+                      className={`rounded-2xl border px-4 py-4 text-left transition ${
+                        active
+                          ? "border-white/30 bg-white/10"
+                          : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-white">{item.label}</p>
+                      <p className="mt-2 text-xs leading-5 text-zinc-400">{item.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <Field label="Custom prompt override">

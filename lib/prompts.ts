@@ -1,19 +1,45 @@
-import { Character, SceneTemplate } from "@/lib/types";
+import { Character, SceneTemplate, StyleMode } from "@/lib/types";
 
-const styleBlock = [
-  "instagram influencer lifestyle photo",
-  "soft attractive vibe",
-  "girl next door aesthetic",
-  "candid lifestyle moment",
-  "casual moment",
-  "casual instagram snapshot",
-  "slightly imperfect",
-  "natural sunlight",
-  "realistic skin texture",
-  "tiny skin details",
-  "natural feminine silhouette",
-  "realistic body proportions",
-].join(", ");
+const styleBlocks: Record<StyleMode, string> = {
+  lifestyle: [
+    "instagram influencer lifestyle photo",
+    "soft attractive vibe",
+    "girl next door aesthetic",
+    "candid lifestyle moment",
+    "casual moment",
+    "casual instagram snapshot",
+    "slightly imperfect",
+    "natural sunlight",
+    "realistic skin texture",
+    "tiny skin details",
+    "natural feminine silhouette",
+    "realistic body proportions",
+  ].join(", "),
+  selfie: [
+    "realistic instagram selfie photo",
+    "natural personal-post energy",
+    "casual snapshot",
+    "intimate but everyday mood",
+    "slightly imperfect",
+    "natural skin texture",
+    "tiny skin details",
+    "soft flattering light",
+    "realistic body proportions",
+  ].join(", "),
+  sensual: [
+    "sensual lifestyle photo",
+    "soft sensual vibe",
+    "confident feminine energy",
+    "alluring but natural expression",
+    "soft glamour lifestyle photo",
+    "warm sunlight",
+    "natural skin texture",
+    "tiny skin details",
+    "subtle body curve",
+    "realistic body proportions",
+    "tasteful styling",
+  ].join(", "),
+};
 
 const consistencyBlock =
   "maintain the same facial identity across images, same person, same face, same hairline, same eye shape";
@@ -62,8 +88,42 @@ function getSceneBlock(scene: SceneTemplate) {
   return scene.promptTemplate;
 }
 
-function getPoseOptions(scene: SceneTemplate) {
-  const base = [
+function getSensualSceneAccent(scene: SceneTemplate) {
+  switch (scene.id) {
+    case "mirror-selfie":
+      return "mirror selfie in a softly lit bedroom with a fitted casual outfit";
+    case "hotel-morning":
+      return "sitting on a neatly styled bed in warm morning light with elegant lounge styling";
+    case "sunset-balcony":
+      return "balcony sunset moment in a summer dress with warm evening glow";
+    case "poolside":
+      return "poolside relaxing in refined swim cover styling with premium resort mood";
+    case "beach-walk":
+      return "beach sunset walk with warm light, soft breeze, and confident summer energy";
+    case "reading-sofa":
+      return "lounging on a sofa in a fitted casual outfit with soft window light";
+    case "rainy-window":
+      return "leaning near a window with soft directional light and cinematic intimacy";
+    case "rooftop-evening":
+      return "night city lights balcony photo with softly glamorous styling";
+    default:
+      return scene.promptTemplate;
+  }
+}
+
+function getPoseOptions(scene: SceneTemplate, mode: StyleMode) {
+  const base = mode === "sensual"
+    ? [
+        "relaxed but alluring posture",
+        "subtle body curve",
+        "soft smile with confident gaze",
+        "slightly playful expression",
+        "leaning slightly forward",
+        "playing with hair",
+        "looking over shoulder",
+        "avoid explicit posing",
+      ]
+    : [
     "relaxed posture",
     "subtle body curve",
     "natural smile or playful expression",
@@ -116,25 +176,48 @@ function getPoseOptions(scene: SceneTemplate) {
     case "casual-dinner":
       return [...base, "arriving at table", "holding menu or glass", "soft evening body angle"];
     default:
-      return base;
+      return mode === "sensual"
+        ? [...base, "soft confident expression", "slightly turning body", "natural curve emphasis"]
+        : base;
   }
 }
 
-function getCameraOptions(scene: SceneTemplate) {
+function getCameraOptions(scene: SceneTemplate, mode: StyleMode) {
   const selfieScenes = new Set(["mirror-selfie", "car-selfie"]);
 
   if (selfieScenes.has(scene.id)) {
-    return [
+    return mode === "sensual"
+      ? [
+          "iphone selfie photo",
+          "handheld shot",
+          "casual instagram photo",
+          "slightly imperfect framing",
+          "soft lighting",
+          "social media photo",
+          "natural instagram crop",
+        ]
+      : [
       "iphone selfie photo",
       "handheld shot",
       "casual instagram photo",
       "slightly off-center framing",
       "slightly imperfect framing",
       "natural instagram crop",
-    ];
+      ];
   }
 
-  return [
+  return mode === "sensual"
+    ? [
+        "iphone selfie photo or lifestyle fashion photo",
+        "handheld shot",
+        "soft lighting",
+        "social media photo",
+        "slightly imperfect framing",
+        "natural lighting",
+        "shallow depth of field",
+        "natural instagram crop",
+      ]
+    : [
     "iphone photo",
     "handheld shot",
     "casual instagram photo",
@@ -146,11 +229,11 @@ function getCameraOptions(scene: SceneTemplate) {
     "natural lighting",
     "shallow depth of field",
     "natural instagram crop",
-  ];
+    ];
 }
 
-function getPoseBlock(scene: SceneTemplate, seed: string) {
-  const options = getPoseOptions(scene);
+function getPoseBlock(scene: SceneTemplate, seed: string, mode: StyleMode) {
+  const options = getPoseOptions(scene, mode);
   return [
     pickVariant(`${seed}:pose-a`, options),
     pickVariant(`${seed}:pose-b`, options),
@@ -160,8 +243,8 @@ function getPoseBlock(scene: SceneTemplate, seed: string) {
     .join(", ");
 }
 
-function getCameraBlock(scene: SceneTemplate, seed: string) {
-  const options = getCameraOptions(scene);
+function getCameraBlock(scene: SceneTemplate, seed: string, mode: StyleMode) {
+  const options = getCameraOptions(scene, mode);
   return [
     pickVariant(`${seed}:camera-a`, options),
     pickVariant(`${seed}:camera-b`, options),
@@ -176,17 +259,31 @@ export function composeImagePrompt(input: {
   scene: SceneTemplate;
   customPrompt?: string;
   variantSeed?: string;
+  mode?: StyleMode;
 }) {
-  const { character, scene, customPrompt, variantSeed = `${character.id}:${scene.id}` } = input;
+  const {
+    character,
+    scene,
+    customPrompt,
+    variantSeed = `${character.id}:${scene.id}`,
+    mode = "lifestyle",
+  } = input;
+  const sceneBlock = mode === "sensual" ? getSensualSceneAccent(scene) : getSceneBlock(scene);
+  const opener =
+    mode === "sensual"
+      ? `Create a realistic sensual lifestyle photo of ${character.displayName}.`
+      : mode === "selfie"
+        ? `Create a realistic instagram selfie photo of ${character.displayName}.`
+        : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
 
   const blocks = [
-    `Create a realistic instagram lifestyle photo of ${character.displayName}.`,
+    opener,
     "",
     `Identity: ${getIdentityBlock(character)}.`,
-    `Style: ${styleBlock}.`,
-    `Scene: ${getSceneBlock(scene)}.`,
-    `Pose: ${getPoseBlock(scene, variantSeed)}.`,
-    `Camera: ${getCameraBlock(scene, variantSeed)}.`,
+    `Style: ${styleBlocks[mode]}.`,
+    `Scene: ${sceneBlock}.`,
+    `Pose: ${getPoseBlock(scene, variantSeed, mode)}.`,
+    `Camera: ${getCameraBlock(scene, variantSeed, mode)}.`,
     `Consistency: ${consistencyBlock}.`,
     customPrompt ? `Extra direction: ${customPrompt}.` : null,
     `Negative: ${character.negativePrompt}, ${negativeBlock}.`,
