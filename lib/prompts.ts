@@ -307,6 +307,44 @@ export function composeImagePrompt(input: {
         ? `Create a realistic instagram selfie photo of ${character.displayName}.`
         : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
 
+  if (mode === "sensual") {
+    const simplifiedNegative = [
+      character.negativePrompt,
+      "studio lighting",
+      "glamour photography",
+      "supermodel pose",
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const blocks = [
+      `Realistic iphone photo of ${character.displayName}.`,
+      "",
+      getIdentityBlock(character),
+      "",
+      "soft sensual vibe,",
+      "natural feminine curves,",
+      "playful confident expression.",
+      "",
+      `Scene: ${sceneBlock}.`,
+      "",
+      `Pose: ${getPoseBlock(scene, variantSeed, mode, sensualPoseBias)}.`,
+      "",
+      "Lighting:",
+      "soft morning sunlight.",
+      "",
+      "Camera:",
+      `${getCameraBlock(scene, variantSeed, mode)}.`,
+      "",
+      "Keep the same face identity.",
+      customPrompt ? `Extra direction: ${customPrompt}.` : null,
+      "",
+      `Negative: ${simplifiedNegative}.`,
+    ];
+
+    return blocks.filter(Boolean).join("\n");
+  }
+
   const blocks = [
     opener,
     "",
