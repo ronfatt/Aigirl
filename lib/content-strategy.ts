@@ -1,5 +1,11 @@
 import { sceneLibrary } from "@/lib/scene-library";
-import { ContentBucket, GenerationHistoryItem, SceneTemplate, StyleMode } from "@/lib/types";
+import {
+  ContentBucket,
+  GenerationHistoryItem,
+  SceneTemplate,
+  StyleMode,
+  WeeklyPlanItem,
+} from "@/lib/types";
 
 type BucketPlan = {
   targetPercent: number;
@@ -135,4 +141,34 @@ export function getSceneRatioHint(
   const bucketPlans = getBucketPlans(mode, sensualSexyTarget);
   const bucket = getBucketForScene(scene.id, bucketPlans);
   return bucketPlans[bucket];
+}
+
+export function buildWeeklyPlan(history: GenerationHistoryItem[]): WeeklyPlanItem[] {
+  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const sceneSequence = [
+    { mode: "lifestyle" as StyleMode, reason: "Anchor the week with a reliable everyday post." },
+    { mode: "selfie" as StyleMode, reason: "Add a more personal handheld update." },
+    { mode: "lifestyle" as StyleMode, reason: "Keep the feed grounded with a lighter routine scene." },
+    { mode: "sensual" as StyleMode, reason: "Use a more polished, higher-attention post midweek." },
+    { mode: "lifestyle" as StyleMode, reason: "Refresh the feed with a change of background." },
+    { mode: "selfie" as StyleMode, reason: "Close the week with a direct personal post." },
+    { mode: "sensual" as StyleMode, reason: "Reserve one stronger glam post for the weekend." },
+  ];
+
+  return dayLabels.map((dayLabel, index) => {
+    const item = sceneSequence[index];
+    const summary = getContentMixSummary(
+      history,
+      item.mode,
+      item.mode === "sensual" ? 18 : 15,
+    );
+
+    return {
+      dayLabel,
+      mode: item.mode,
+      sceneId: summary.recommendedScene.id,
+      sceneTitle: summary.recommendedScene.title,
+      reason: item.reason,
+    };
+  });
 }

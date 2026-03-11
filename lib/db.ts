@@ -10,8 +10,13 @@ import {
   Platform,
   Post,
   PostStatus,
+  QualityTag,
+  SensualPoseBias,
+  ShotType,
+  StyleMode,
 } from "@/lib/types";
 import { sceneLibrary } from "@/lib/scene-library";
+import { buildWeeklyPlan } from "@/lib/content-strategy";
 import { composeImagePrompt } from "@/lib/prompts";
 import { generatePersonaImages } from "@/lib/image-generator";
 import { generateCaptionOptions } from "@/lib/caption-generator";
@@ -66,6 +71,17 @@ type DbGenerationRow = {
   selectedImageUrl?: string | null;
   selected_image_url?: string | null;
   status: Generation["status"];
+  mode?: StyleMode;
+  sensualPoseBias?: SensualPoseBias | null;
+  sensual_pose_bias?: SensualPoseBias | null;
+  shotType?: ShotType;
+  shot_type?: ShotType;
+  qualityTags?: QualityTag[];
+  quality_tags?: QualityTag[];
+  isFavorite?: boolean;
+  is_favorite?: boolean;
+  isArchived?: boolean;
+  is_archived?: boolean;
   createdAt?: string | Date;
   created_at?: string | Date;
 };
@@ -157,6 +173,12 @@ function createSeedState(): DatabaseState {
         selectedImageUrl:
           "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80",
         status: "approved",
+        mode: "lifestyle",
+        sensualPoseBias: null,
+        shotType: "half-body",
+        qualityTags: ["face stable", "framing good", "background clear", "publish-ready"],
+        isFavorite: true,
+        isArchived: false,
         createdAt: timestamp,
       },
     ],
@@ -295,6 +317,16 @@ function mapGenerationRow(row: DbGenerationRow): Generation {
         : [],
     selectedImageUrl: row.selectedImageUrl ?? row.selected_image_url ?? null,
     status: row.status,
+    mode: row.mode ?? "lifestyle",
+    sensualPoseBias: row.sensualPoseBias ?? row.sensual_pose_bias ?? null,
+    shotType: row.shotType ?? row.shot_type ?? "half-body",
+    qualityTags: Array.isArray(row.qualityTags)
+      ? row.qualityTags
+      : Array.isArray(row.quality_tags)
+        ? row.quality_tags
+        : [],
+    isFavorite: Boolean(row.isFavorite ?? row.is_favorite ?? false),
+    isArchived: Boolean(row.isArchived ?? row.is_archived ?? false),
     createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
   };
 }
@@ -421,9 +453,22 @@ async function ensureDatabaseReady() {
           image_urls jsonb not null default '[]'::jsonb,
           selected_image_url text,
           status text not null,
+          mode text not null default 'lifestyle',
+          sensual_pose_bias text,
+          shot_type text not null default 'half-body',
+          quality_tags jsonb not null default '[]'::jsonb,
+          is_favorite boolean not null default false,
+          is_archived boolean not null default false,
           created_at timestamptz not null default now()
         )
       `;
+
+      await sql`alter table generations add column if not exists mode text not null default 'lifestyle'`;
+      await sql`alter table generations add column if not exists sensual_pose_bias text`;
+      await sql`alter table generations add column if not exists shot_type text not null default 'half-body'`;
+      await sql`alter table generations add column if not exists quality_tags jsonb not null default '[]'::jsonb`;
+      await sql`alter table generations add column if not exists is_favorite boolean not null default false`;
+      await sql`alter table generations add column if not exists is_archived boolean not null default false`;
 
       await sql`
         create table if not exists posts (
@@ -627,6 +672,12 @@ async function listGenerationsFromDb() {
         image_urls,
         selected_image_url,
         status,
+        mode,
+        sensual_pose_bias,
+        shot_type,
+        quality_tags,
+        is_favorite,
+        is_archived,
         created_at
       from generations
       order by created_at desc
@@ -1014,12 +1065,143 @@ export async function updatePost(
   return rows[0] ? mapPostRow(rows[0]) : null;
 }
 
+export async function updateGenerationMeta(
+  id: string,
+  input: Partial<Pick<Generation, "isFavorite" | "isArchived" | "qualityTags">>,
+) {
+  if (!hasDatabaseUrl) {
+    const state = getMemoryState();
+    const index = state.generations.findIndex((generation) => generation.id === id);
+
+    if (index === -1) {
+      return null;
+    }
+
+    state.generations[index] = {
+      ...state.generations[index],
+      ...input,
+    };
+
+    return state.generations[index];
+  }
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("generations")
+      .update({
+        is_favorite: input.isFavorite,
+        is_archived: input.isArchived,
+        quality_tags: input.qualityTags,
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data ? mapGenerationRow(data as DbGenerationRow) : null;
+  }
+
+  const sql = requireSql();
+  await ensureDatabaseReady();
+  const existingRows = await sql<DbGenerationRow[]>`
+    select
+      id,
+      character_id,
+      scene_template_id,
+      final_prompt as "finalPrompt",
+      image_urls,
+      selected_image_url,
+      status,
+      mode,
+      sensual_pose_bias,
+      shot_type,
+      quality_tags,
+      is_favorite,
+      is_archived,
+      created_at
+    from generations
+    where id = ${id}
+    limit 1
+  `;
+  const existing = existingRows[0] ? mapGenerationRow(existingRows[0]) : null;
+
+  if (!existing) {
+    return null;
+  }
+
+  const rows = await sql<DbGenerationRow[]>`
+    update generations set
+      is_favorite = ${input.isFavorite ?? existing.isFavorite},
+      is_archived = ${input.isArchived ?? existing.isArchived},
+      quality_tags = ${sql.json(input.qualityTags ?? existing.qualityTags)}
+    where id = ${id}
+    returning
+      id,
+      character_id,
+      scene_template_id,
+      final_prompt as "finalPrompt",
+      image_urls,
+      selected_image_url,
+      status,
+      mode,
+      sensual_pose_bias,
+      shot_type,
+      quality_tags,
+      is_favorite,
+      is_archived,
+      created_at
+  `;
+
+  return rows[0] ? mapGenerationRow(rows[0]) : null;
+}
+
+export async function deleteGeneration(id: string) {
+  if (!hasDatabaseUrl) {
+    const state = getMemoryState();
+    const originalLength = state.generations.length;
+    state.generations = state.generations.filter((generation) => generation.id !== id);
+    state.posts = state.posts.filter((post) => post.generationId !== id);
+    return state.generations.length !== originalLength;
+  }
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { error, count } = await supabase
+      .from("generations")
+      .delete({ count: "exact" })
+      .eq("id", id);
+
+    if (error) {
+      throw error;
+    }
+
+    return Boolean(count);
+  }
+
+  const sql = requireSql();
+  await ensureDatabaseReady();
+  const rows = await sql<{ id: string }[]>`
+    delete from generations
+    where id = ${id}
+    returning id
+  `;
+  return rows.length > 0;
+}
+
 async function insertGenerationRecord(input: {
   id: string;
   characterId: string;
   sceneTemplateId: string;
   finalPrompt: string;
   imageUrls: string[];
+  mode: StyleMode;
+  sensualPoseBias: SensualPoseBias | null;
+  shotType: ShotType;
+  qualityTags: QualityTag[];
 }) {
   const supabase = getSupabaseDbClient();
 
@@ -1032,6 +1214,12 @@ async function insertGenerationRecord(input: {
       image_urls: input.imageUrls,
       selected_image_url: null,
       status: "completed",
+      mode: input.mode,
+      sensual_pose_bias: input.sensualPoseBias,
+      shot_type: input.shotType,
+      quality_tags: input.qualityTags,
+      is_favorite: false,
+      is_archived: false,
     };
 
     const { data, error } = await supabase
@@ -1058,6 +1246,13 @@ async function insertGenerationRecord(input: {
       image_urls,
       selected_image_url,
       status
+      ,
+      mode,
+      sensual_pose_bias,
+      shot_type,
+      quality_tags,
+      is_favorite,
+      is_archived
     ) values (
       ${input.id},
       ${input.characterId},
@@ -1066,6 +1261,13 @@ async function insertGenerationRecord(input: {
       ${sql.json(input.imageUrls)},
       ${null},
       ${"completed"}
+      ,
+      ${input.mode},
+      ${input.sensualPoseBias},
+      ${input.shotType},
+      ${sql.json(input.qualityTags)},
+      ${false},
+      ${false}
     )
     returning
       id,
@@ -1075,10 +1277,58 @@ async function insertGenerationRecord(input: {
       image_urls,
       selected_image_url,
       status,
+      mode,
+      sensual_pose_bias,
+      shot_type,
+      quality_tags,
+      is_favorite,
+      is_archived,
       created_at
   `;
 
   return mapGenerationRow(rows[0]);
+}
+
+const shotRotation: ShotType[] = ["half-body", "three-quarter", "full-body", "close"];
+
+function chooseShotType(characterId: string, sceneTemplateId: string, history: Generation[]) {
+  const recentForCharacter = history.filter((item) => item.characterId === characterId).slice(0, 6);
+  const recentSameScene = recentForCharacter.filter((item) => item.sceneTemplateId === sceneTemplateId);
+  const blockedShots = new Set<ShotType>();
+
+  for (const item of recentForCharacter.slice(0, 2)) {
+    blockedShots.add(item.shotType);
+  }
+
+  if (recentSameScene[0]?.shotType) {
+    blockedShots.add(recentSameScene[0].shotType);
+  }
+
+  const candidate = shotRotation.find((shotType) => !blockedShots.has(shotType));
+  return candidate ?? shotRotation[(recentForCharacter.length + recentSameScene.length) % shotRotation.length];
+}
+
+function buildQualityTags(input: {
+  sceneTemplateId: string;
+  mode: StyleMode;
+  shotType: ShotType;
+  selectedImageUrl?: string | null;
+}): QualityTag[] {
+  const tags: QualityTag[] = ["face stable", "background clear"];
+
+  if (input.shotType !== "close") {
+    tags.push("framing good");
+  }
+
+  if (
+    input.selectedImageUrl ||
+    ["half-body", "three-quarter", "full-body"].includes(input.shotType) ||
+    input.mode !== "sensual"
+  ) {
+    tags.push("publish-ready");
+  }
+
+  return Array.from(new Set(tags));
 }
 
 export async function createGeneration(input: GenerateImageInput) {
@@ -1087,19 +1337,27 @@ export async function createGeneration(input: GenerateImageInput) {
         getCharacterFromDb(input.characterId),
       )
     : await getCharacter(input.characterId);
+  const generationHistory = hasDatabaseUrl
+    ? await withReadTimeout("createGeneration.listGenerations", () => listGenerationsFromDb())
+    : getMemoryState().generations;
   const scene = sceneLibrary.find((item) => item.id === input.sceneTemplateId);
 
   if (!character || !scene) {
     throw new Error("Character or scene template not found.");
   }
 
+  const mode = input.mode ?? "lifestyle";
+  const sensualPoseBias = mode === "sensual" ? input.sensualPoseBias ?? "soft glam" : null;
+  const shotType = chooseShotType(character.id, scene.id, generationHistory);
+
   const finalPrompt = composeImagePrompt({
     character,
     scene,
     customPrompt: input.customPrompt,
     variantSeed: makeId("variant"),
-    mode: input.mode,
-    sensualPoseBias: input.sensualPoseBias,
+    mode,
+    sensualPoseBias: sensualPoseBias ?? undefined,
+    shotType,
   });
   const imageUrls = await generatePersonaImages({
     prompt: finalPrompt,
@@ -1116,6 +1374,16 @@ export async function createGeneration(input: GenerateImageInput) {
       imageUrls,
       selectedImageUrl: null,
       status: "completed",
+      mode,
+      sensualPoseBias,
+      shotType,
+      qualityTags: buildQualityTags({
+        sceneTemplateId: scene.id,
+        mode,
+        shotType,
+      }),
+      isFavorite: false,
+      isArchived: false,
       createdAt: now(),
     };
 
@@ -1129,6 +1397,14 @@ export async function createGeneration(input: GenerateImageInput) {
     sceneTemplateId: scene.id,
     finalPrompt,
     imageUrls,
+    mode,
+    sensualPoseBias,
+    shotType,
+    qualityTags: buildQualityTags({
+      sceneTemplateId: scene.id,
+      mode,
+      shotType,
+    }),
   });
 
   return { generation };
@@ -1408,6 +1684,23 @@ export async function selectGenerationImage(generationId: string, imageUrl: stri
     generation,
     draftPost: mapPostRow(insertedRows[0]),
   };
+}
+
+export async function createDraftPostForGeneration(generationId: string) {
+  const snapshot = await getDatabaseSnapshot();
+  const generation = snapshot.generations.find((item) => item.id === generationId) ?? null;
+
+  if (!generation) {
+    return null;
+  }
+
+  const targetImage = generation.selectedImageUrl ?? generation.imageUrls[0] ?? null;
+
+  if (!targetImage) {
+    throw new Error("No image is available for this generation.");
+  }
+
+  return selectGenerationImage(generationId, targetImage);
 }
 
 export async function publishPost(postId: string, platform?: Platform) {
@@ -1720,6 +2013,18 @@ export async function getDashboardData(): Promise<DashboardPayload> {
         imageUrl,
       };
     }),
+    weeklyPlan: buildWeeklyPlan(
+      state.generations.map((generation) => ({
+        ...generation,
+        characterName:
+          state.characters.find((item) => item.id === generation.characterId)?.displayName ?? "Unknown",
+        sceneTitle:
+          sceneLibrary.find((item) => item.id === generation.sceneTemplateId)?.title ?? "Unknown scene",
+        previewImageUrl: generation.selectedImageUrl ?? generation.imageUrls[0] ?? null,
+        linkedPostId: state.posts.find((item) => item.generationId === generation.id)?.id ?? null,
+        linkedPostStatus: state.posts.find((item) => item.generationId === generation.id)?.status ?? null,
+      })),
+    ),
   });
 
   if (!hasDatabaseUrl) {
@@ -1764,6 +2069,18 @@ export async function getDashboardData(): Promise<DashboardPayload> {
         imageUrl,
       };
     }),
+    weeklyPlan: buildWeeklyPlan(
+      generations.map((generation) => ({
+        ...generation,
+        characterName:
+          characters.find((item) => item.id === generation.characterId)?.displayName ?? "Unknown",
+        sceneTitle:
+          sceneLibrary.find((item) => item.id === generation.sceneTemplateId)?.title ?? "Unknown scene",
+        previewImageUrl: generation.selectedImageUrl ?? generation.imageUrls[0] ?? null,
+        linkedPostId: posts.find((item) => item.generationId === generation.id)?.id ?? null,
+        linkedPostStatus: posts.find((item) => item.generationId === generation.id)?.status ?? null,
+      })),
+    ),
   };
 }
 

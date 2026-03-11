@@ -4,6 +4,12 @@ export type GenerationStatus = "draft" | "completed" | "approved" | "failed";
 export type RiskLevel = "safe" | "suggestive" | "restricted";
 export type StyleMode = "lifestyle" | "selfie" | "sensual";
 export type SensualPoseBias = "soft glam" | "playful" | "confident";
+export type ShotType = "close" | "half-body" | "three-quarter" | "full-body";
+export type QualityTag =
+  | "face stable"
+  | "framing good"
+  | "background clear"
+  | "publish-ready";
 export type PostingTone =
   | "soft lifestyle"
   | "casual intimate"
@@ -47,6 +53,12 @@ export interface Generation {
   imageUrls: string[];
   selectedImageUrl: string | null;
   status: GenerationStatus;
+  mode: StyleMode;
+  sensualPoseBias: SensualPoseBias | null;
+  shotType: ShotType;
+  qualityTags: QualityTag[];
+  isFavorite: boolean;
+  isArchived: boolean;
   createdAt: string;
 }
 
@@ -77,6 +89,7 @@ export interface DashboardPayload {
   metrics: DashboardMetrics;
   recentGenerations: Array<Generation & { characterName: string; sceneTitle: string }>;
   recentPosts: Array<Post & { characterName: string; imageUrl: string | null }>;
+  weeklyPlan: WeeklyPlanItem[];
 }
 
 export interface GenerationHistoryItem extends Generation {
@@ -110,6 +123,14 @@ export interface GenerateImageInput {
   imageCount: number;
   mode?: StyleMode;
   sensualPoseBias?: SensualPoseBias;
+}
+
+export interface WeeklyPlanItem {
+  dayLabel: string;
+  mode: StyleMode;
+  sceneId: string;
+  sceneTitle: string;
+  reason: string;
 }
 
 export interface CaptionInput {

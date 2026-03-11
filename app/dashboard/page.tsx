@@ -106,6 +106,37 @@ export default function DashboardPage() {
               </div>
             </section>
           </div>
+
+          <section className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 shadow-panel">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Weekly Planner</h3>
+                <p className="text-sm text-zinc-400">
+                  A lightweight 7-day content cadence based on recent generation mix.
+                </p>
+              </div>
+              <p className="text-sm text-zinc-500">{dashboard.weeklyPlan.length} days</p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {dashboard.weeklyPlan.map((item) => (
+                <div
+                  key={`${item.dayLabel}-${item.sceneId}`}
+                  className="rounded-2xl border border-white/10 bg-black/10 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">{item.dayLabel}</p>
+                      <p className="mt-2 font-medium text-white">{item.sceneTitle}</p>
+                    </div>
+                    <StatusBadge status={item.mode === "sensual" ? "suggestive" : "safe"} />
+                  </div>
+                  <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-500">{item.mode}</p>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">{item.reason}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       ) : null}
     </div>

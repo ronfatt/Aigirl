@@ -1,4 +1,4 @@
-import { Character, SceneTemplate, SensualPoseBias, StyleMode } from "@/lib/types";
+import { Character, SceneTemplate, SensualPoseBias, ShotType, StyleMode } from "@/lib/types";
 
 const styleBlocks: Record<StyleMode, string> = {
   lifestyle: [
@@ -283,6 +283,19 @@ function getCameraBlock(scene: SceneTemplate, seed: string, mode: StyleMode) {
     .join(", ");
 }
 
+function getShotBlock(shotType: ShotType) {
+  switch (shotType) {
+    case "close":
+      return "portrait close-up, face and upper torso in frame, avoid chest-only crop";
+    case "full-body":
+      return "full-body framing, complete silhouette visible, avoid tight crop";
+    case "three-quarter":
+      return "three-quarter body framing, from head to below knees, avoid tight bust crop";
+    default:
+      return "half-body framing, from head to waist, balanced composition, avoid chest-only crop";
+  }
+}
+
 export function composeImagePrompt(input: {
   character: Character;
   scene: SceneTemplate;
@@ -290,6 +303,7 @@ export function composeImagePrompt(input: {
   variantSeed?: string;
   mode?: StyleMode;
   sensualPoseBias?: SensualPoseBias;
+  shotType?: ShotType;
 }) {
   const {
     character,
@@ -298,6 +312,7 @@ export function composeImagePrompt(input: {
     variantSeed = `${character.id}:${scene.id}`,
     mode = "lifestyle",
     sensualPoseBias = "soft glam",
+    shotType = "half-body",
   } = input;
   const sceneBlock = mode === "sensual" ? getSensualSceneAccent(scene) : getSceneBlock(scene);
   const opener =
@@ -336,6 +351,8 @@ export function composeImagePrompt(input: {
       "Camera:",
       `${getCameraBlock(scene, variantSeed, mode)}.`,
       "",
+      `Shot: ${getShotBlock(shotType)}.`,
+      "",
       "Keep the same face identity.",
       customPrompt ? `Extra direction: ${customPrompt}.` : null,
       "",
@@ -353,6 +370,7 @@ export function composeImagePrompt(input: {
     `Scene: ${sceneBlock}.`,
     `Pose: ${getPoseBlock(scene, variantSeed, mode, sensualPoseBias)}.`,
     `Camera: ${getCameraBlock(scene, variantSeed, mode)}.`,
+    `Shot: ${getShotBlock(shotType)}.`,
     `Consistency: ${consistencyBlock}.`,
     customPrompt ? `Extra direction: ${customPrompt}.` : null,
     `Negative: ${character.negativePrompt}, ${negativeBlock}.`,

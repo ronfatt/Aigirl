@@ -16,6 +16,7 @@ import {
   Character,
   Generation,
   GenerationHistoryItem,
+  QualityTag,
   SensualPoseBias,
   StyleMode,
 } from "@/lib/types";
@@ -98,6 +99,13 @@ export function GenerateWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [historyModeFilter, setHistoryModeFilter] = useState<StyleMode | "all">("all");
+  const [historySceneFilter, setHistorySceneFilter] = useState<string>("all");
+  const [historyStatusFilter, setHistoryStatusFilter] =
+    useState<Generation["status"] | "all">("all");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [approvedOnly, setApprovedOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(initialCharacters.length === 0);
   const [isPending, startTransition] = useTransition();
@@ -192,6 +200,15 @@ export function GenerateWorkspace({
   );
   const contentMix = getContentMixSummary(history, mode, sensualSexyTarget);
   const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene, mode, sensualSexyTarget) : null;
+  const filteredHistory = history.filter((item) => {
+    if (!showArchived && item.isArchived) return false;
+    if (historyModeFilter !== "all" && item.mode !== historyModeFilter) return false;
+    if (historySceneFilter !== "all" && item.sceneTemplateId !== historySceneFilter) return false;
+    if (historyStatusFilter !== "all" && item.status !== historyStatusFilter) return false;
+    if (favoritesOnly && !item.isFavorite) return false;
+    if (approvedOnly && item.status !== "approved") return false;
+    return true;
+  });
   const promptPreview =
     currentCharacter && currentScene
       ? composeImagePrompt({
@@ -236,6 +253,107 @@ export function GenerateWorkspace({
       );
     } finally {
       setLoadingHistory(false);
+    }
+  }
+
+  async function updateHistoryItem(
+    generationId: string,
+    payload: { isFavorite?: boolean; isArchived?: boolean; qualityTags?: QualityTag[] },
+  ) {
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch(`/api/generations/${generationId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string };
+        throw new Error(result.error || "Unable to update generation.");
+      }
+
+      await refreshHistory();
+    } catch (generationError) {
+      setError(generationError instanceof Error ? generationError.message : "Unable to update generation.");
+    }
+  }
+
+  async function createDraftFromHistory(generationId: string) {
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch(`/api/generations/${generationId}`, {
+        method: "POST",
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to create draft post.");
+      }
+
+      setGeneration(payload.generation);
+      setDraftPostId(payload.draftPost?.id ?? null);
+      setSelectedImage(payload.generation?.selectedImageUrl ?? null);
+      setCaptionOptions(payload.draftPost?.captionOptions ?? []);
+      setSelectedCaption(payload.draftPost?.caption ?? null);
+      setSuccessMessage(
+        payload.draftPost?.id
+          ? `Draft post created: ${payload.draftPost.id}`
+          : "Draft post created.",
+      );
+      await refreshHistory();
+    } catch (draftError) {
+      setError(draftError instanceof Error ? draftError.message : "Unable to create draft post.");
+    }
+  }
+
+  async function deleteHistoryItem(generationId: string) {
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch(`/api/generations/${generationId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || "Unable to delete generation.");
+      }
+
+      if (generation?.id === generationId) {
+        setGeneration(null);
+        setDraftPostId(null);
+        setSelectedImage(null);
+        setCaptionOptions([]);
+        setSelectedCaption(null);
+      }
+
+      setSuccessMessage("Generation deleted.");
+      await refreshHistory();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Unable to delete generation.");
+    }
+  }
+
+  async function toggleQualityTag(generationItem: Generation, tag: QualityTag) {
+    const nextTags = generationItem.qualityTags.includes(tag)
+      ? generationItem.qualityTags.filter((item) => item !== tag)
+      : [...generationItem.qualityTags, tag];
+
+    await updateHistoryItem(generationItem.id, { qualityTags: nextTags });
+
+    if (generation?.id === generationItem.id) {
+      setGeneration({
+        ...generationItem,
+        qualityTags: nextTags,
+      });
     }
   }
 
@@ -681,6 +799,40 @@ export function GenerateWorkspace({
             onSelect={handleSelectImage}
             onPreview={setPreviewImageUrl}
           />
+          <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-medium text-white">Quality review</h4>
+                <p className="mt-1 text-xs text-zinc-400">
+                  Tag the current generation so the library is easier to filter later.
+                </p>
+              </div>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                {generation.mode} • {generation.shotType}
+              </p>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {(["face stable", "framing good", "background clear", "publish-ready"] as QualityTag[]).map((tag) => {
+                const active = generation.qualityTags.includes(tag);
+
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => void toggleQualityTag(generation, tag)}
+                    className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition ${
+                      active
+                        ? "border-white/25 bg-white/10 text-white"
+                        : "border-white/10 bg-white/[0.04] text-zinc-400"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -724,23 +876,87 @@ export function GenerateWorkspace({
               Past generations stay in history so you can recover photos and linked post records later.
             </p>
           </div>
-          <p className="text-sm text-zinc-500">{history.length} records</p>
+          <p className="text-sm text-zinc-500">{filteredHistory.length} / {history.length} records</p>
+        </div>
+
+        <div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <select
+            value={historyModeFilter}
+            onChange={(event) => setHistoryModeFilter(event.target.value as StyleMode | "all")}
+            className={inputClassName}
+          >
+            <option value="all">All modes</option>
+            <option value="lifestyle">Lifestyle</option>
+            <option value="selfie">Selfie</option>
+            <option value="sensual">Sensual</option>
+          </select>
+          <select
+            value={historySceneFilter}
+            onChange={(event) => setHistorySceneFilter(event.target.value)}
+            className={inputClassName}
+          >
+            <option value="all">All scenes</option>
+            {sceneLibrary.map((scene) => (
+              <option key={scene.id} value={scene.id}>
+                {scene.title}
+              </option>
+            ))}
+          </select>
+          <select
+            value={historyStatusFilter}
+            onChange={(event) =>
+              setHistoryStatusFilter(event.target.value as Generation["status"] | "all")
+            }
+            className={inputClassName}
+          >
+            <option value="all">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="approved">Approved</option>
+            <option value="failed">Failed</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setFavoritesOnly((value) => !value)}
+            className={`rounded-2xl border px-4 py-3 text-sm transition ${
+              favoritesOnly ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/10 text-zinc-400"
+            }`}
+          >
+            Favorites only
+          </button>
+          <button
+            type="button"
+            onClick={() => setApprovedOnly((value) => !value)}
+            className={`rounded-2xl border px-4 py-3 text-sm transition ${
+              approvedOnly ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/10 text-zinc-400"
+            }`}
+          >
+            Approved only
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowArchived((value) => !value)}
+            className={`rounded-2xl border px-4 py-3 text-sm transition ${
+              showArchived ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/10 text-zinc-400"
+            }`}
+          >
+            {showArchived ? "Hide archive" : "Show archive"}
+          </button>
         </div>
 
         {historyError ? <p className="mb-4 text-sm text-amber-300">{historyError}</p> : null}
 
         {loadingHistory ? <LoadingState label="Refreshing history" /> : null}
 
-        {!loadingHistory && !history.length ? (
+        {!loadingHistory && !filteredHistory.length ? (
           <EmptyState
-            title="No generation history yet"
-            description="Generate your first image set and it will stay available here."
+            title="No matching generations"
+            description="Adjust filters or generate a new image set to populate this library."
           />
         ) : null}
 
-        {!loadingHistory && history.length ? (
+        {!loadingHistory && filteredHistory.length ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {history.map((item) => {
+            {filteredHistory.map((item) => {
               const active = generation?.id === item.id;
 
               return (
@@ -779,8 +995,23 @@ export function GenerateWorkspace({
                   <div className="space-y-2 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-medium text-white">{item.characterName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-white">{item.characterName}</p>
+                          {item.isFavorite ? (
+                            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-amber-200">
+                              Favorite
+                            </span>
+                          ) : null}
+                          {item.isArchived ? (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+                              Archived
+                            </span>
+                          ) : null}
+                        </div>
                         <p className="text-sm text-zinc-400">{item.sceneTitle}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                          {item.mode} • {item.shotType}
+                        </p>
                       </div>
                       <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{item.status}</p>
                     </div>
@@ -788,6 +1019,18 @@ export function GenerateWorkspace({
                     <p className="text-sm text-zinc-400">
                       Post: {item.linkedPostId ? `${item.linkedPostId} • ${item.linkedPostStatus}` : "Not created yet"}
                     </p>
+                    {item.qualityTags.length ? (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {item.qualityTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-400"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
                     {item.imageUrls.length ? (
                       <div className="grid grid-cols-4 gap-2 pt-2">
@@ -811,6 +1054,51 @@ export function GenerateWorkspace({
                         ))}
                       </div>
                     ) : null}
+
+                    <div className="flex flex-wrap gap-2 pt-3">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void updateHistoryItem(item.id, { isFavorite: !item.isFavorite });
+                        }}
+                        className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                      >
+                        {item.isFavorite ? "Unfavorite" : "Favorite"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void updateHistoryItem(item.id, { isArchived: !item.isArchived });
+                        }}
+                        className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                      >
+                        {item.isArchived ? "Unarchive" : "Archive"}
+                      </button>
+                      {!item.linkedPostId ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void createDraftFromHistory(item.id);
+                          }}
+                          className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-xs text-emerald-200 transition hover:bg-emerald-300/15"
+                        >
+                          Create draft
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void deleteHistoryItem(item.id);
+                        }}
+                        className="rounded-full border border-rose-300/20 bg-rose-300/10 px-3 py-1.5 text-xs text-rose-200 transition hover:bg-rose-300/15"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </button>
               );
