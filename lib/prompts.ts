@@ -4,9 +4,13 @@ const styleBlock = [
   "instagram influencer lifestyle photo",
   "soft attractive vibe",
   "girl next door aesthetic",
-  "candid everyday moment",
+  "candid lifestyle moment",
+  "casual moment",
+  "casual instagram snapshot",
+  "slightly imperfect",
   "natural sunlight",
   "realistic skin texture",
+  "tiny skin details",
   "natural feminine silhouette",
   "realistic body proportions",
 ].join(", ");
@@ -64,6 +68,10 @@ function getPoseOptions(scene: SceneTemplate) {
     "subtle body curve",
     "natural smile or playful expression",
     "avoid professional model poses",
+    "looking away from camera",
+    "leaning slightly forward",
+    "adjusting hair",
+    "soft laugh moment",
   ];
 
   switch (scene.id) {
@@ -80,9 +88,9 @@ function getPoseOptions(scene: SceneTemplate) {
     case "poolside":
       return [...base, "seated poolside posture", "slightly turning body", "resting one hand near the pool edge"];
     case "city-shopping":
-      return [...base, "mid-step walking pose", "holding shopping bags", "off-center candid body angle"];
+      return [...base, "mid-step walking pose", "holding shopping bags", "off-center candid body angle", "walking naturally"];
     case "mirror-selfie":
-      return [...base, "casual selfie angle", "phone visible in frame", "standing mirror pose"];
+      return [...base, "casual selfie angle", "phone visible in frame", "standing mirror pose", "taking mirror selfie"];
     case "sunset-balcony":
       return [...base, "leaning on railing", "looking toward skyline", "standing three-quarter pose"];
     case "casual-gym":
@@ -118,17 +126,23 @@ function getCameraOptions(scene: SceneTemplate) {
   if (selfieScenes.has(scene.id)) {
     return [
       "iphone selfie photo",
-      "handheld photo",
+      "handheld shot",
+      "casual instagram photo",
       "slightly off-center framing",
+      "slightly imperfect framing",
       "natural instagram crop",
     ];
   }
 
   return [
     "iphone photo",
-    "handheld lifestyle photo",
+    "handheld shot",
+    "casual instagram photo",
+    "casual snapshot",
     "social media framing",
     "slightly off-center framing",
+    "slightly imperfect framing",
+    "over the shoulder shot",
     "natural lighting",
     "shallow depth of field",
     "natural instagram crop",
