@@ -1097,6 +1097,7 @@ export async function createGeneration(input: GenerateImageInput) {
     character,
     scene,
     customPrompt: input.customPrompt,
+    variantSeed: makeId("variant"),
   });
   const imageUrls = await generatePersonaImages({
     prompt: finalPrompt,
