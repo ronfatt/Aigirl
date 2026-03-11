@@ -74,6 +74,33 @@ export const promptPresets: PromptPreset[] = [
       "adult East Asian woman, long dark hair, fair natural skin, softly curvy feminine silhouette, realistic anatomy, mirror selfie in a softly lit bedroom, fitted crop knit or elegant casual top, high-waisted skirt or shorts, confident feminine energy, soft sensual vibe, playful but natural expression, iphone selfie photo, slightly imperfect framing, authentic personal post realism",
   },
   {
+    id: "car-casual-selfie",
+    title: "Car Casual Selfie",
+    category: "Selfie",
+    description: "Passenger-seat handheld selfie with natural framing and personal-post energy.",
+    modes: ["selfie"],
+    prompt:
+      "adult East Asian woman, long dark hair, fair natural skin, realistic anatomy, passenger seat selfie, handheld phone angle, casual instagram snapshot, slightly off-center framing, natural daylight through car window, relaxed personal-post expression, authentic iphone photo feel",
+  },
+  {
+    id: "bedroom-phone-selfie",
+    title: "Bedroom Phone Selfie",
+    category: "Selfie",
+    description: "Soft bedroom phone-photo preset with natural room light and candid framing.",
+    modes: ["selfie"],
+    prompt:
+      "adult East Asian woman, long dark hair, fair natural skin, softly curvy feminine silhouette, realistic anatomy, casual bedroom phone selfie, fitted lounge outfit, natural room light, candid mirror-free handheld photo, slightly imperfect framing, intimate but everyday mood, realistic skin texture",
+  },
+  {
+    id: "coffee-run-selfie",
+    title: "Coffee Run Selfie",
+    category: "Selfie",
+    description: "Casual out-and-about selfie with coffee and more personal social framing.",
+    modes: ["selfie"],
+    prompt:
+      "adult East Asian woman, long dark hair, fair natural skin, realistic anatomy, handheld selfie while carrying coffee outdoors, casual city background, iphone photo, candid personal post, slightly imperfect crop, natural smile, soft daylight, authentic lifestyle realism",
+  },
+  {
     id: "window-light-allure",
     title: "Window Light Allure",
     category: "Sensual",

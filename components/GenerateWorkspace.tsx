@@ -12,7 +12,13 @@ import { SceneSelector } from "@/components/SceneSelector";
 import { promptPresets } from "@/lib/prompt-presets";
 import { getContentMixSummary, getSceneRatioHint } from "@/lib/content-strategy";
 import { sceneLibrary } from "@/lib/scene-library";
-import { Character, Generation, GenerationHistoryItem, StyleMode } from "@/lib/types";
+import {
+  Character,
+  Generation,
+  GenerationHistoryItem,
+  SensualPoseBias,
+  StyleMode,
+} from "@/lib/types";
 import { composeImagePrompt } from "@/lib/prompts";
 import { formatDate } from "@/lib/utils";
 
@@ -34,6 +40,27 @@ export function GenerateWorkspace({
     "reading-sofa",
     "rainy-window",
     "rooftop-evening",
+  ];
+  const sensualPoseBiases: Array<{
+    value: SensualPoseBias;
+    label: string;
+    description: string;
+  }> = [
+    {
+      value: "soft glam",
+      label: "Soft Glam",
+      description: "Gentler facial energy with softer glamour posture.",
+    },
+    {
+      value: "playful",
+      label: "Playful",
+      description: "Lighter expression, teasing energy, and more relaxed movement.",
+    },
+    {
+      value: "confident",
+      label: "Confident",
+      description: "Stronger eye contact and a more poised feminine stance.",
+    },
   ];
   const styleModes: Array<{ value: StyleMode; label: string; description: string }> = [
     {
@@ -57,6 +84,7 @@ export function GenerateWorkspace({
   const [characterId, setCharacterId] = useState("");
   const [sceneId, setSceneId] = useState(sceneLibrary[0]?.id ?? "");
   const [mode, setMode] = useState<StyleMode>("lifestyle");
+  const [sensualPoseBias, setSensualPoseBias] = useState<SensualPoseBias>("soft glam");
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [imageCount, setImageCount] = useState(2);
@@ -170,6 +198,7 @@ export function GenerateWorkspace({
           scene: currentScene,
           customPrompt,
           mode,
+          sensualPoseBias,
         })
       : "Select an active character to preview the prompt.";
 
@@ -243,6 +272,7 @@ export function GenerateWorkspace({
             customPrompt,
             imageCount,
             mode,
+            sensualPoseBias,
           }),
         });
 
@@ -443,6 +473,41 @@ export function GenerateWorkspace({
                           </div>
                         </div>
                         <p className="mt-3 text-xs leading-5 text-zinc-400">{scene.captionHint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {mode === "sensual" ? (
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-white">Sensual pose bias</h3>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      Shift the expression and body language before the random pose variants are chosen.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {sensualPoseBiases.map((item) => {
+                    const active = item.value === sensualPoseBias;
+
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => setSensualPoseBias(item.value)}
+                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                          active
+                            ? "border-rose-200/30 bg-rose-200/12"
+                            : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-white">{item.label}</p>
+                        <p className="mt-2 text-xs leading-5 text-zinc-400">{item.description}</p>
                       </button>
                     );
                   })}

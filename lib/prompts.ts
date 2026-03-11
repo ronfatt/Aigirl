@@ -1,4 +1,4 @@
-import { Character, SceneTemplate, StyleMode } from "@/lib/types";
+import { Character, SceneTemplate, SensualPoseBias, StyleMode } from "@/lib/types";
 
 const styleBlocks: Record<StyleMode, string> = {
   lifestyle: [
@@ -111,13 +111,37 @@ function getSensualSceneAccent(scene: SceneTemplate) {
   }
 }
 
-function getPoseOptions(scene: SceneTemplate, mode: StyleMode) {
+function getSensualBiasOptions(bias: SensualPoseBias) {
+  switch (bias) {
+    case "playful":
+      return [
+        "slightly playful expression",
+        "soft laugh moment",
+        "teasing eye contact",
+        "light hair movement",
+      ];
+    case "confident":
+      return [
+        "confident feminine gaze",
+        "relaxed poised posture",
+        "looking over shoulder",
+        "strong but natural presence",
+      ];
+    default:
+      return [
+        "soft smile with confident gaze",
+        "subtle body curve",
+        "gentle feminine expression",
+        "soft glamour posture",
+      ];
+  }
+}
+
+function getPoseOptions(scene: SceneTemplate, mode: StyleMode, sensualPoseBias: SensualPoseBias) {
   const base = mode === "sensual"
     ? [
         "relaxed but alluring posture",
-        "subtle body curve",
-        "soft smile with confident gaze",
-        "slightly playful expression",
+        ...getSensualBiasOptions(sensualPoseBias),
         "leaning slightly forward",
         "playing with hair",
         "looking over shoulder",
@@ -232,8 +256,13 @@ function getCameraOptions(scene: SceneTemplate, mode: StyleMode) {
     ];
 }
 
-function getPoseBlock(scene: SceneTemplate, seed: string, mode: StyleMode) {
-  const options = getPoseOptions(scene, mode);
+function getPoseBlock(
+  scene: SceneTemplate,
+  seed: string,
+  mode: StyleMode,
+  sensualPoseBias: SensualPoseBias,
+) {
+  const options = getPoseOptions(scene, mode, sensualPoseBias);
   return [
     pickVariant(`${seed}:pose-a`, options),
     pickVariant(`${seed}:pose-b`, options),
@@ -260,6 +289,7 @@ export function composeImagePrompt(input: {
   customPrompt?: string;
   variantSeed?: string;
   mode?: StyleMode;
+  sensualPoseBias?: SensualPoseBias;
 }) {
   const {
     character,
@@ -267,6 +297,7 @@ export function composeImagePrompt(input: {
     customPrompt,
     variantSeed = `${character.id}:${scene.id}`,
     mode = "lifestyle",
+    sensualPoseBias = "soft glam",
   } = input;
   const sceneBlock = mode === "sensual" ? getSensualSceneAccent(scene) : getSceneBlock(scene);
   const opener =
@@ -282,7 +313,7 @@ export function composeImagePrompt(input: {
     `Identity: ${getIdentityBlock(character)}.`,
     `Style: ${styleBlocks[mode]}.`,
     `Scene: ${sceneBlock}.`,
-    `Pose: ${getPoseBlock(scene, variantSeed, mode)}.`,
+    `Pose: ${getPoseBlock(scene, variantSeed, mode, sensualPoseBias)}.`,
     `Camera: ${getCameraBlock(scene, variantSeed, mode)}.`,
     `Consistency: ${consistencyBlock}.`,
     customPrompt ? `Extra direction: ${customPrompt}.` : null,

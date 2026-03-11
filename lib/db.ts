@@ -1099,6 +1099,7 @@ export async function createGeneration(input: GenerateImageInput) {
     customPrompt: input.customPrompt,
     variantSeed: makeId("variant"),
     mode: input.mode,
+    sensualPoseBias: input.sensualPoseBias,
   });
   const imageUrls = await generatePersonaImages({
     prompt: finalPrompt,
