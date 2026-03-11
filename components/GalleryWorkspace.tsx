@@ -101,7 +101,9 @@ export function GalleryWorkspace() {
     }
   }
 
-  async function runBatch(action: "favorite" | "archive" | "delete" | "draft") {
+  async function runBatch(
+    action: "favorite" | "unfavorite" | "archive" | "unarchive" | "delete" | "draft",
+  ) {
     if (!selectedIds.length) {
       return;
     }
@@ -111,8 +113,12 @@ export function GalleryWorkspace() {
     try {
       if (action === "favorite") {
         await Promise.all(selectedIds.map((id) => patchGeneration(id, { isFavorite: true })));
+      } else if (action === "unfavorite") {
+        await Promise.all(selectedIds.map((id) => patchGeneration(id, { isFavorite: false })));
       } else if (action === "archive") {
         await Promise.all(selectedIds.map((id) => patchGeneration(id, { isArchived: true })));
+      } else if (action === "unarchive") {
+        await Promise.all(selectedIds.map((id) => patchGeneration(id, { isArchived: false })));
       } else if (action === "draft") {
         await Promise.all(selectedIds.map((id) => createDraft(id)));
       } else {
@@ -180,8 +186,14 @@ export function GalleryWorkspace() {
         <button type="button" onClick={() => void runBatch("favorite")} className={batchButtonClassName}>
           Favorite
         </button>
+        <button type="button" onClick={() => void runBatch("unfavorite")} className={batchButtonClassName}>
+          Unfavorite
+        </button>
         <button type="button" onClick={() => void runBatch("archive")} className={batchButtonClassName}>
           Archive
+        </button>
+        <button type="button" onClick={() => void runBatch("unarchive")} className={batchButtonClassName}>
+          Unarchive
         </button>
         <button type="button" onClick={() => void runBatch("draft")} className={batchButtonClassName}>
           Create drafts
