@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { LoadingState } from "@/components/LoadingState";
@@ -133,6 +134,12 @@ export default function DashboardPage() {
                   </div>
                   <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-500">{item.mode}</p>
                   <p className="mt-3 text-sm leading-6 text-zinc-400">{item.reason}</p>
+                  <Link
+                    href={`/generate?sceneId=${item.sceneId}&mode=${item.mode}`}
+                    className="mt-4 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                  >
+                    Generate this
+                  </Link>
                 </div>
               ))}
             </div>

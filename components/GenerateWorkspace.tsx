@@ -26,11 +26,15 @@ import { formatDate } from "@/lib/utils";
 interface GenerateWorkspaceProps {
   initialCharacters: Character[];
   initialHistory: GenerationHistoryItem[];
+  initialSceneId?: string | null;
+  initialMode?: StyleMode | null;
 }
 
 export function GenerateWorkspace({
   initialCharacters,
   initialHistory,
+  initialSceneId,
+  initialMode,
 }: GenerateWorkspaceProps) {
   const sensualSceneIds = [
     "mirror-selfie",
@@ -109,6 +113,16 @@ export function GenerateWorkspace({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingCharacters, setLoadingCharacters] = useState(initialCharacters.length === 0);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (initialSceneId && sceneLibrary.some((scene) => scene.id === initialSceneId)) {
+      setSceneId(initialSceneId);
+    }
+
+    if (initialMode === "lifestyle" || initialMode === "selfie" || initialMode === "sensual") {
+      setMode(initialMode);
+    }
+  }, [initialMode, initialSceneId]);
 
   useEffect(() => {
     setCharacterId(

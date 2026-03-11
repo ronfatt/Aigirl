@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PenSquare, Settings, Sparkles, Users } from "lucide-react";
+import { Images, LayoutDashboard, PenSquare, Settings, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/character", label: "Character", icon: Users },
   { href: "/generate", label: "Generate", icon: Sparkles },
+  { href: "/gallery", label: "Gallery", icon: Images },
   { href: "/posts", label: "Posts", icon: PenSquare },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
