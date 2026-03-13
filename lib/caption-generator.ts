@@ -1,27 +1,50 @@
 import { composeCaptionPrompt } from "@/lib/prompts";
 import { getCaptionModel, getOpenAIClient } from "@/lib/openai";
-import { CaptionGenerationResult, Character, SceneTemplate } from "@/lib/types";
+import { CaptionGenerationResult, Character, Platform, SceneTemplate } from "@/lib/types";
 
-const mockCaptions: Record<Character["postingTone"], string[]> = {
+const mockInstagramCaptions: Record<Character["postingTone"], string[]> = {
   "soft lifestyle": [
-    "Slow mornings make everything feel lighter.",
-    "Keeping the day simple and the light soft.",
-    "A little calm before the city gets loud.",
+    "Soft light, slower mood, better timing.",
+    "Some moments know exactly how to stay with you.",
+    "Keeping it quiet, but not forgettable.",
   ],
   "casual intimate": [
-    "Just me, good light, and a quiet moment.",
-    "This felt like the nicest part of the day.",
-    "Tiny rituals, better moods.",
+    "Just me, good light, and a reason to linger.",
+    "This one felt a little too personal to skip.",
+    "A quiet moment that said more than expected.",
   ],
   playful: [
-    "Proof that the plan was simply to enjoy today.",
-    "A small main-character moment on purpose.",
-    "A good angle and better timing.",
+    "I knew this angle was going to behave badly.",
+    "Nothing dramatic. Just hard to scroll past.",
+    "A little playful, a little too aware.",
   ],
   "elegant minimal": [
-    "Less noise, better energy.",
-    "Clean lines, soft light, easy mood.",
-    "Quiet luxury starts with a slower pace.",
+    "Less noise, more presence.",
+    "Clean lines, soft light, and no rush.",
+    "Quiet confidence usually lands the best.",
+  ],
+};
+
+const mockFacebookCaptions: Record<Character["postingTone"], string[]> = {
+  "soft lifestyle": [
+    "Today felt slower in the best way. I kept things simple, stayed close to the light, and let one quiet moment stretch a little longer than usual. Days like this always remind me that calm can be its own kind of luxury. Do you also enjoy afternoons that ask for less?",
+    "Some of my favorite days are the ones that do not look impressive from the outside. A little soft light, a familiar corner, and enough space to breathe can change the mood of everything. I think I am learning to appreciate these small pauses more and more.",
+    "There was something especially gentle about today. I did not do much, but the mood, the light, and the stillness made it feel memorable anyway. Sometimes that kind of quiet stays with me longer than the busy days do.",
+  ],
+  "casual intimate": [
+    "This felt like one of those small private moments that somehow become the best part of the day. I stayed where the light was nicest, let myself slow down, and did not rush the feeling. It is funny how the softest moments can leave the strongest impression. What kind of moment resets you lately?",
+    "I was not planning to make much of today, but it turned into one of those moods I wanted to hold onto a little longer. Good light, a quiet space, and the kind of calm that makes everything feel softer. Some days do not need much to feel personal.",
+    "I keep thinking about how much atmosphere can change a whole day. A little stillness, a familiar room, and a softer mood can make even ordinary moments feel close and memorable. It was one of those afternoons I did not want to rush through.",
+  ],
+  playful: [
+    "I told myself this was just a casual moment, but it ended up having a little more attitude than expected. Maybe it was the light, maybe it was the mood, maybe I just liked the way the whole scene came together. Either way, this one felt fun to keep.",
+    "There are days when everything feels ordinary, and then there are days when the smallest detail gives the whole mood a little spark. That was today for me. A simple setting, a better expression than I planned, and just enough energy to make it interesting. Would you have posted this one too?",
+    "This felt playful in a way I did not really plan. I think the best photos usually happen when the mood is relaxed and you stop trying to make everything perfect. Sometimes the little bit of spontaneity is what makes a moment worth sharing.",
+  ],
+  "elegant minimal": [
+    "I always come back to simple moments when I want things to feel grounded again. Clean lines, soft light, and a quieter mood somehow say more than anything overdone ever could. There is something about understated days that feels easier to remember.",
+    "The older I get, the more I like moments that feel refined without trying too hard. Good light, an uncluttered setting, and a calm pace can make even a small part of the day feel complete. This was one of those moments for me.",
+    "I like when a day feels polished without losing its softness. Nothing too loud, nothing too forced, just the kind of atmosphere that makes you want to stay in it a little longer. Those are usually the moments I end up sharing most.",
   ],
 };
 
@@ -35,22 +58,29 @@ function normalizeCaptionOptions(options: string[]) {
   ).slice(0, 3);
 }
 
-function getMockCaptionOptions(tone: Character["postingTone"]) {
-  return mockCaptions[tone].slice(0, 3);
+function getMockCaptionOptions(
+  tone: Character["postingTone"],
+  platform: Exclude<Platform, "both">,
+) {
+  const source = platform === "facebook" ? mockFacebookCaptions : mockInstagramCaptions;
+  return source[tone].slice(0, 3);
 }
 
 export async function generateCaptionOptions(input: {
   character: Character;
   scene: SceneTemplate;
   tone?: Character["postingTone"];
+  platform?: Exclude<Platform, "both">;
 }): Promise<CaptionGenerationResult> {
   const tone = input.tone ?? input.character.postingTone;
+  const platform = input.platform ?? "instagram";
   const prompt = composeCaptionPrompt({
     character: input.character,
     scene: input.scene,
     tone,
+    platform,
   });
-  const fallbackOptions = getMockCaptionOptions(tone);
+  const fallbackOptions = getMockCaptionOptions(tone, platform);
 
   if (!process.env.OPENAI_API_KEY) {
     return {
@@ -68,7 +98,9 @@ export async function generateCaptionOptions(input: {
         {
           role: "system",
           content:
-            "You write short lifestyle captions for social media. Return JSON only.",
+            platform === "facebook"
+              ? "You write warm, personal Facebook lifestyle posts. Return JSON only."
+              : "You write short, memorable Instagram lifestyle captions. Return JSON only.",
         },
         {
           role: "user",

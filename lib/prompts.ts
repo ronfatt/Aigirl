@@ -1,4 +1,4 @@
-import { Character, SceneTemplate, SensualPoseBias, ShotType, StyleMode } from "@/lib/types";
+import { Character, Platform, SceneTemplate, SensualPoseBias, ShotType, StyleMode } from "@/lib/types";
 
 const styleBlocks: Record<StyleMode, string> = {
   lifestyle: [
@@ -383,13 +383,28 @@ export function composeCaptionPrompt(input: {
   character: Character;
   scene: SceneTemplate;
   tone: Character["postingTone"];
+  platform: Exclude<Platform, "both">;
 }) {
+  if (input.platform === "facebook") {
+    return [
+      `Write three Facebook post options for ${input.character.displayName}.`,
+      `Tone: ${input.tone}.`,
+      `Bio context: ${input.character.bio}.`,
+      `Scene hint: ${input.scene.captionHint}.`,
+      "Write in a personal, lifestyle-sharing voice as if she is reflecting on a small moment from her day.",
+      "Each option should be 3 to 5 sentences, warm, specific, and natural.",
+      "Include one or two concrete life details, a soft reflection, and optionally end with a light question.",
+      "Avoid sounding promotional, generic, or like influencer marketing copy.",
+    ].join(" ");
+  }
+
   return [
-    `Write three short caption options for ${input.character.displayName}.`,
+    `Write three Instagram caption options for ${input.character.displayName}.`,
     `Tone: ${input.tone}.`,
     `Bio context: ${input.character.bio}.`,
     `Scene hint: ${input.scene.captionHint}.`,
-    "Keep them natural, social-media friendly, concise, and not overly promotional.",
-    "Each option should sound like a real personal post and stay under 18 words.",
+    "Keep them natural, social-media friendly, concise, and slightly magnetic.",
+    "Mix these styles across the three options: one short hook, one mood line with subtext, and one soft teasing line.",
+    "Each option should sound like a real personal post and stay under 22 words.",
   ].join(" ");
 }

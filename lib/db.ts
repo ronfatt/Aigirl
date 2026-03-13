@@ -1429,6 +1429,7 @@ export async function createCaption(input: CaptionInput) {
     character,
     scene,
     tone: input.tone,
+    platform: input.platform === "both" ? "instagram" : input.platform,
   });
 }
 
