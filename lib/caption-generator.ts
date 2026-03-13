@@ -99,8 +99,8 @@ export async function generateCaptionOptions(input: {
           role: "system",
           content:
             platform === "facebook"
-              ? "You write warm, personal Facebook lifestyle posts. Return JSON only."
-              : "You write short, memorable Instagram lifestyle captions. Return JSON only.",
+              ? "You write warm, personal Facebook lifestyle posts that feel like real diary-style sharing. Vary sentence openings, include small concrete details, and avoid generic positivity. Return JSON only."
+              : "You write short, memorable Instagram lifestyle captions that feel human, lightly magnetic, and not generic. Avoid cliché influencer wording. Return JSON only.",
         },
         {
           role: "user",

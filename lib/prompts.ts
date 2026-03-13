@@ -385,6 +385,15 @@ export function composeCaptionPrompt(input: {
   tone: Character["postingTone"];
   platform: Exclude<Platform, "both">;
 }) {
+  const toneGuide =
+    input.tone === "soft lifestyle"
+      ? "Keep the voice gentle, observant, and warm."
+      : input.tone === "casual intimate"
+        ? "Keep the voice close, personal, and lightly intimate without sounding explicit."
+        : input.tone === "playful"
+          ? "Keep the voice lightly teasing, self-aware, and charming."
+          : "Keep the voice polished, understated, and quietly confident.";
+
   if (input.platform === "facebook") {
     return [
       `Write three Facebook post options for ${input.character.displayName}.`,
@@ -393,11 +402,13 @@ export function composeCaptionPrompt(input: {
       `Scene hint: ${input.scene.captionHint}.`,
       "Write in a personal, lifestyle-sharing voice as if she is reflecting on a small moment from her day.",
       "Each option should be 3 to 5 sentences, warm, specific, and natural.",
+      toneGuide,
       "Make the three options distinct:",
       "Option 1 should feel like a soft diary entry.",
-      "Option 2 should feel like a gentle life reflection with a little emotional pull.",
-      "Option 3 should feel like a personal share that can end with a light, natural question.",
+      "Option 2 should feel like a slightly intimate diary reflection with a little emotional pull.",
+      "Option 3 should feel like a reflective personal share that can end with a light, natural question.",
       "Include one or two concrete life details and a soft reflection.",
+      "Avoid generic motivational language and avoid repeating the same opening rhythm across options.",
       "Avoid sounding promotional, generic, or like influencer marketing copy.",
     ].join(" ");
   }
@@ -408,10 +419,12 @@ export function composeCaptionPrompt(input: {
     `Bio context: ${input.character.bio}.`,
     `Scene hint: ${input.scene.captionHint}.`,
     "Keep them natural, social-media friendly, concise, and slightly magnetic.",
+    toneGuide,
     "Make the three options distinct:",
     "Option 1 should be a soft tease.",
     "Option 2 should be a quiet mood line with subtext.",
     "Option 3 should feel like confident allure without sounding explicit.",
+    "Avoid generic filler like 'just vibes', 'main character energy', or obvious influencer clichés.",
     "Each option should sound like a real personal post and stay under 22 words.",
   ].join(" ");
 }
