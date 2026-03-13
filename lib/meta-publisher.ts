@@ -6,6 +6,8 @@ import {
 } from "@/lib/types";
 
 const META_GRAPH_BASE_URL = "https://graph.facebook.com/v23.0";
+const IG_CONTAINER_READY_ATTEMPTS = 8;
+const IG_CONTAINER_READY_DELAY_MS = 2000;
 
 function getMetaConfig() {
   return {
@@ -88,6 +90,45 @@ async function metaGet(path: string, params: Record<string, string>) {
   return response.json() as Promise<Record<string, unknown>>;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForInstagramContainerReady(
+  creationId: string,
+  accessToken: string,
+) {
+  for (let attempt = 0; attempt < IG_CONTAINER_READY_ATTEMPTS; attempt += 1) {
+    const container = await metaGet(`/${creationId}`, {
+      fields: "id,status_code,status",
+      access_token: accessToken,
+    });
+
+    const statusCode =
+      typeof container.status_code === "string" ? container.status_code : null;
+    const statusText =
+      typeof container.status === "string" ? container.status : null;
+
+    if (statusCode === "FINISHED") {
+      return;
+    }
+
+    if (statusCode === "ERROR" || statusCode === "EXPIRED") {
+      throw new Error(
+        `Instagram media container is not publishable (${statusCode}${statusText ? `: ${statusText}` : ""}).`,
+      );
+    }
+
+    if (attempt < IG_CONTAINER_READY_ATTEMPTS - 1) {
+      await sleep(IG_CONTAINER_READY_DELAY_MS);
+    }
+  }
+
+  throw new Error(
+    "Instagram media container was created but did not become publishable in time. Check that the image URL is a direct public image and try again.",
+  );
+}
+
 async function publishMock(
   platform: Exclude<Platform, "both">,
 ): Promise<PublishPlatformResult> {
@@ -126,6 +167,8 @@ export async function publishToInstagram(
       throw new Error("Instagram container creation did not return an ID.");
     }
 
+    await waitForInstagramContainerReady(creationId, accessToken);
+
     const published = await metaFormPost(`/${igBusinessId}/media_publish`, {
       creation_id: creationId,
       access_token: accessToken,
@@ -148,6 +191,57 @@ export async function publishToInstagram(
       platform: "instagram",
       externalPostId: null,
       error: error instanceof Error ? error.message : "Instagram publishing failed.",
+    };
+  }
+}
+
+export async function testInstagramConnection(): Promise<MetaConnectionTestResult> {
+  if (!canPublishToInstagram()) {
+    return {
+      ok: false,
+      platform: "instagram",
+      mode: "mock",
+      message:
+        "Instagram publishing is running in mock mode because META_ACCESS_TOKEN or META_IG_BUSINESS_ID is missing.",
+      details: {
+        pageId: getMetaConfig().igBusinessId || undefined,
+      },
+    };
+  }
+
+  const { accessToken, igBusinessId } = getMetaConfig();
+
+  try {
+    const account = await metaGet(`/${igBusinessId}`, {
+      fields: "id,username,name",
+      access_token: accessToken,
+    });
+
+    return {
+      ok: true,
+      platform: "instagram",
+      mode: "live",
+      message:
+        "Instagram publishing connection looks valid. The configured token can read the connected Instagram Business account.",
+      details: {
+        pageId: typeof account.id === "string" ? account.id : igBusinessId,
+        pageName:
+          typeof account.username === "string"
+            ? account.username
+            : typeof account.name === "string"
+              ? account.name
+              : null,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      platform: "instagram",
+      mode: "live",
+      message: error instanceof Error ? error.message : "Instagram connection test failed.",
+      details: {
+        pageId: igBusinessId || undefined,
+      },
     };
   }
 }
