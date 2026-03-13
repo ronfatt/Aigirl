@@ -393,7 +393,11 @@ export function composeCaptionPrompt(input: {
       `Scene hint: ${input.scene.captionHint}.`,
       "Write in a personal, lifestyle-sharing voice as if she is reflecting on a small moment from her day.",
       "Each option should be 3 to 5 sentences, warm, specific, and natural.",
-      "Include one or two concrete life details, a soft reflection, and optionally end with a light question.",
+      "Make the three options distinct:",
+      "Option 1 should feel like a soft diary entry.",
+      "Option 2 should feel like a gentle life reflection with a little emotional pull.",
+      "Option 3 should feel like a personal share that can end with a light, natural question.",
+      "Include one or two concrete life details and a soft reflection.",
       "Avoid sounding promotional, generic, or like influencer marketing copy.",
     ].join(" ");
   }
@@ -404,7 +408,10 @@ export function composeCaptionPrompt(input: {
     `Bio context: ${input.character.bio}.`,
     `Scene hint: ${input.scene.captionHint}.`,
     "Keep them natural, social-media friendly, concise, and slightly magnetic.",
-    "Mix these styles across the three options: one short hook, one mood line with subtext, and one soft teasing line.",
+    "Make the three options distinct:",
+    "Option 1 should be a soft tease.",
+    "Option 2 should be a quiet mood line with subtext.",
+    "Option 3 should feel like confident allure without sounding explicit.",
     "Each option should sound like a real personal post and stay under 22 words.",
   ].join(" ");
 }
