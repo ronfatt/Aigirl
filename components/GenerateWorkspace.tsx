@@ -93,6 +93,7 @@ export function GenerateWorkspace({
   const [mode, setMode] = useState<StyleMode>("lifestyle");
   const [sensualPoseBias, setSensualPoseBias] = useState<SensualPoseBias>("soft glam");
   const [sensualSexyTarget, setSensualSexyTarget] = useState(15);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [imageCount, setImageCount] = useState(2);
@@ -215,6 +216,7 @@ export function GenerateWorkspace({
   const visiblePresets = promptPresets.filter(
     (preset) => !preset.modes || preset.modes.includes(mode),
   );
+  const quickScenes = sceneLibrary.slice(0, 6);
   const contentMix = getContentMixSummary(history, mode, sensualSexyTarget);
   const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene, mode, sensualSexyTarget) : null;
   const filteredHistory = history.filter((item) => {
@@ -503,12 +505,131 @@ export function GenerateWorkspace({
   return (
     <div>
       <Header
-        title="Generate"
-        description="Choose one active persona, merge it with a scene template, and create draft visuals for review."
+        title="Create"
+        description="Pick a persona, choose a scene, generate a few stills, then approve the best one."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
-        <div className="space-y-6">
+      <div className="space-y-6">
+        <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Quick create</h3>
+              <p className="mt-1 text-sm text-zinc-400">
+                Use this first. Advanced prompt controls are available below if you need them.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((value) => !value)}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+            >
+              {showAdvanced ? "Hide advanced" : "Show advanced"}
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <Field label="Persona">
+              <select
+                value={characterId}
+                onChange={(event) => setCharacterId(event.target.value)}
+                className={inputClassName}
+              >
+                {characters.map((character) => (
+                  <option key={character.id} value={character.id}>
+                    {character.displayName}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Mode">
+              <select
+                value={mode}
+                onChange={(event) => setMode(event.target.value as StyleMode)}
+                className={inputClassName}
+              >
+                {styleModes.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Scene">
+              <select
+                value={sceneId}
+                onChange={(event) => setSceneId(event.target.value)}
+                className={inputClassName}
+              >
+                {sceneLibrary.map((scene) => (
+                  <option key={scene.id} value={scene.id}>
+                    {scene.title}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="How many">
+              <select
+                value={imageCount}
+                onChange={(event) => setImageCount(Number(event.target.value))}
+                className={inputClassName}
+              >
+                {[1, 2, 3, 4].map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <div className="mt-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Quick scenes</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickScenes.map((scene) => (
+                <button
+                  key={scene.id}
+                  type="button"
+                  onClick={() => setSceneId(scene.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    scene.id === sceneId
+                      ? "border-white/30 bg-white/10 text-white"
+                      : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
+                  }`}
+                >
+                  {scene.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isPending || !characterId}
+              className="rounded-2xl bg-white px-5 py-3 text-sm font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending ? "Generating..." : "Generate Images"}
+            </button>
+            {draftPostId ? (
+              <p className="text-sm text-zinc-400">Asset draft created: {draftPostId}</p>
+            ) : (
+              <p className="text-sm text-zinc-500">
+                {sceneRatioHint
+                  ? `${sceneRatioHint.label} content. Asset draft will be created after approval.`
+                  : "Asset draft will be created after approval."}
+              </p>
+            )}
+          </div>
+          {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
+          {successMessage ? <p className="mt-3 text-sm text-emerald-300">{successMessage}</p> : null}
+        </div>
+
+        {showAdvanced ? (
+          <div className="space-y-6">
           <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="Active character">
@@ -795,9 +916,12 @@ export function GenerateWorkspace({
           </div>
 
           <PromptPreview prompt={promptPreview} />
+          <div>
+            <h3 className="mb-4 text-lg font-semibold text-white">All scenes</h3>
+            <SceneSelector scenes={sceneLibrary} selectedSceneId={sceneId} onSelect={setSceneId} />
+          </div>
         </div>
-
-        <SceneSelector scenes={sceneLibrary} selectedSceneId={sceneId} onSelect={setSceneId} />
+        ) : null}
       </div>
 
       {generation ? (

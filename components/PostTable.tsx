@@ -152,6 +152,7 @@ export function PostTable({ posts, characters, generations, videoClips }: PostTa
       {filteredPosts.map((post) => {
         const character = characters.find((item) => item.id === post.characterId);
         const generation = generations.find((item) => item.id === post.generationId);
+        const relatedClips = videoClips.filter((clip) => clip.generationId === post.generationId);
 
         return (
           <div
@@ -193,7 +194,7 @@ export function PostTable({ posts, characters, generations, videoClips }: PostTa
                     {character?.displayName ?? "Unknown persona"}
                   </h3>
                   <p className="text-sm text-zinc-400">
-                    {post.platform} caption style • Created {formatDate(post.createdAt)}
+                    Export pack • {post.platform} caption style • Created {formatDate(post.createdAt)}
                   </p>
                 </div>
                 <StatusBadge status={post.status} />
@@ -218,6 +219,53 @@ export function PostTable({ posts, characters, generations, videoClips }: PostTa
                   ))}
                 </div>
               ) : null}
+
+              {relatedClips.length ? (
+                <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-white">Related clip drafts</h4>
+                      <p className="text-xs text-zinc-500">
+                        Saved vertical clips built from this same approved still.
+                      </p>
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      {relatedClips.length} clips
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {relatedClips.slice(0, 2).map((clip) => (
+                      <div key={clip.id} className="overflow-hidden rounded-[1rem] border border-white/10 bg-white/[0.03]">
+                        <video
+                          controls
+                          playsInline
+                          poster={clip.thumbnailUrl}
+                          src={clip.videoUrl}
+                          className="aspect-[9/16] w-full bg-black object-cover"
+                        />
+                        <div className="space-y-2 p-3">
+                          <p className="text-sm font-medium text-white">{clip.motionLabel}</p>
+                          <p className="text-xs text-zinc-500">
+                            {clip.durationSeconds}s • {formatDate(clip.createdAt)}
+                          </p>
+                          <a
+                            href={clip.videoUrl}
+                            download={`${character?.displayName ?? "persona"}-${clip.id}.webm`}
+                            className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                          >
+                            Download clip
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[1.2rem] border border-dashed border-white/10 bg-black/10 p-4 text-sm text-zinc-500">
+                  No clip draft saved for this export yet.
+                </div>
+              )}
 
               <CaptionEditor post={post} />
             </div>
