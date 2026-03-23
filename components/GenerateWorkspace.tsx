@@ -9,6 +9,7 @@ import { ImageGrid } from "@/components/ImageGrid";
 import { LoadingState } from "@/components/LoadingState";
 import { PromptPreview } from "@/components/PromptPreview";
 import { SceneSelector } from "@/components/SceneSelector";
+import { VideoDraftBuilder } from "@/components/VideoDraftBuilder";
 import { promptPresets } from "@/lib/prompt-presets";
 import { getContentMixSummary, getSceneRatioHint } from "@/lib/content-strategy";
 import { sceneLibrary } from "@/lib/scene-library";
@@ -308,7 +309,7 @@ export function GenerateWorkspace({
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error || "Unable to create draft post.");
+        throw new Error(payload.error || "Unable to create asset draft.");
       }
 
       setGeneration(payload.generation);
@@ -318,12 +319,12 @@ export function GenerateWorkspace({
       setSelectedCaption(payload.draftPost?.caption ?? null);
       setSuccessMessage(
         payload.draftPost?.id
-          ? `Draft post created: ${payload.draftPost.id}`
-          : "Draft post created.",
+          ? `Asset draft created: ${payload.draftPost.id}`
+          : "Asset draft created.",
       );
       await refreshHistory();
     } catch (draftError) {
-      setError(draftError instanceof Error ? draftError.message : "Unable to create draft post.");
+      setError(draftError instanceof Error ? draftError.message : "Unable to create asset draft.");
     }
   }
 
@@ -459,7 +460,7 @@ export function GenerateWorkspace({
       await refreshHistory();
       setSuccessMessage(
         payload.draftPost?.id
-          ? `Approved image saved. Draft post created: ${payload.draftPost.id}`
+          ? `Approved image saved. Asset draft created: ${payload.draftPost.id}`
           : "Approved image saved.",
       );
     } catch (approvalError) {
@@ -489,7 +490,7 @@ export function GenerateWorkspace({
         throw new Error("Unable to save caption.");
       }
 
-      setSuccessMessage("Selected caption saved to draft post.");
+      setSuccessMessage("Selected caption saved to asset draft.");
       await refreshHistory();
     } catch (captionError) {
       setError(captionError instanceof Error ? captionError.message : "Unable to save caption.");
@@ -777,12 +778,12 @@ export function GenerateWorkspace({
                 {isPending ? "Generating..." : "Generate Images"}
               </button>
               {draftPostId ? (
-                <p className="text-sm text-zinc-400">Draft post created: {draftPostId}</p>
+                <p className="text-sm text-zinc-400">Asset draft created: {draftPostId}</p>
               ) : (
                 <p className="text-sm text-zinc-500">
                   {sceneRatioHint
-                    ? `${sceneRatioHint.label} content. Draft post will be created after approval.`
-                    : "Draft post will be created after approval."}
+                    ? `${sceneRatioHint.label} content. Asset draft will be created after approval.`
+                    : "Asset draft will be created after approval."}
                 </p>
               )}
             </div>
@@ -802,7 +803,7 @@ export function GenerateWorkspace({
             <div>
               <h3 className="text-lg font-semibold text-white">Generated images</h3>
               <p className="text-sm text-zinc-400">
-                Select the approved image to save it and create a draft post.
+                Select the approved image to save it and create an asset draft.
               </p>
             </div>
             <p className="text-sm text-zinc-500">Status: {generation.status}</p>
@@ -850,12 +851,20 @@ export function GenerateWorkspace({
         </div>
       ) : null}
 
+      {generation?.selectedImageUrl ? (
+        <VideoDraftBuilder
+          imageUrl={generation.selectedImageUrl}
+          characterName={currentCharacter?.displayName ?? "Persona"}
+          sceneTitle={currentScene?.title ?? "Clip"}
+        />
+      ) : null}
+
       {draftPostId && captionOptions.length ? (
         <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
           <div className="mb-5">
-            <h3 className="text-lg font-semibold text-white">Caption options</h3>
+            <h3 className="text-lg font-semibold text-white">Caption drafts</h3>
             <p className="text-sm text-zinc-400">
-              Pick one caption to save into the draft post. You can still edit it later in Posts.
+              Pick one caption to save into the asset draft. You can still tune it later in Exports.
             </p>
           </div>
 
@@ -887,7 +896,7 @@ export function GenerateWorkspace({
           <div>
             <h3 className="text-lg font-semibold text-white">Generation history</h3>
             <p className="text-sm text-zinc-400">
-              Past generations stay in history so you can recover photos and linked post records later.
+              Past generations stay in history so you can recover photos, caption drafts, and clip-ready assets later.
             </p>
           </div>
           <p className="text-sm text-zinc-500">{filteredHistory.length} / {history.length} records</p>

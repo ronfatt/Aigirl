@@ -43,29 +43,16 @@ export function CaptionEditor({ post }: CaptionEditorProps) {
     });
   }
 
-  async function publishNow() {
+  async function copyCaption() {
     setError(null);
     setMessage(null);
 
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/publish", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ postId: post.id, platform }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Publish failed.");
-        }
-
-        setMessage("Publish request completed.");
-      } catch (publishError) {
-        setError(publishError instanceof Error ? publishError.message : "Publish failed.");
-      }
-    });
+    try {
+      await navigator.clipboard.writeText(caption);
+      setMessage("Caption copied.");
+    } catch (copyError) {
+      setError(copyError instanceof Error ? copyError.message : "Unable to copy caption.");
+    }
   }
 
   async function refreshCaption() {
@@ -179,13 +166,13 @@ export function CaptionEditor({ post }: CaptionEditorProps) {
         <button
           type="button"
           disabled={isPending}
-          onClick={publishNow}
+          onClick={copyCaption}
           className={cn(
             "rounded-2xl bg-white px-4 py-2.5 text-sm font-medium text-black transition",
             isPending && "cursor-not-allowed opacity-60",
           )}
         >
-          Publish Now
+          Copy Caption
         </button>
         {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}

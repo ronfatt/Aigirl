@@ -4,8 +4,8 @@ import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Persona Publisher",
-  description: "Manage AI personas, generate content, and prepare social publishing workflows.",
+  title: "AI Persona Studio",
+  description: "Build consistent image and clip-ready persona assets for manual Instagram workflows.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

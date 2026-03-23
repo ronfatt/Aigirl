@@ -18,9 +18,6 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
   const [publishReadyOnly, setPublishReadyOnly] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const filteredPosts = useMemo(
     () =>
@@ -38,50 +35,11 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
     [generations, platformFilter, posts, publishReadyOnly, statusFilter],
   );
 
-  function toggleSelection(id: string) {
-    setSelectedIds((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
-    );
-  }
-
-  async function runBatchPublish(platform: Platform) {
-    if (!selectedIds.length) {
-      return;
-    }
-
-    setError(null);
-    setMessage(null);
-
-    try {
-      await Promise.all(
-        selectedIds.map(async (postId) => {
-          const response = await fetch("/api/publish", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ postId, platform }),
-          });
-
-          const payload = await response.json();
-
-          if (!response.ok) {
-            throw new Error(payload.error || "Batch publish failed.");
-          }
-        }),
-      );
-
-      setMessage(`Batch publish completed for ${selectedIds.length} posts.`);
-    } catch (publishError) {
-      setError(publishError instanceof Error ? publishError.message : "Batch publish failed.");
-    }
-  }
-
   if (!posts.length) {
     return (
       <EmptyState
-        title="No posts yet"
-        description="Generated content will appear here once you create a draft post."
+        title="No export drafts yet"
+        description="Approved generations will appear here once you create an asset draft."
       />
     );
   }
@@ -94,50 +52,35 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
           onChange={(event) => setPlatformFilter(event.target.value as Platform | "all")}
           className={inputClassName}
         >
-          <option value="all">All platforms</option>
-          <option value="instagram">Instagram</option>
-          <option value="facebook">Facebook</option>
-          <option value="both">Both</option>
+          <option value="all">All caption styles</option>
+          <option value="instagram">Instagram short</option>
+          <option value="facebook">Facebook long</option>
+          <option value="both">Both-ready</option>
         </select>
         <select
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value as PostStatus | "all")}
           className={inputClassName}
         >
-          <option value="all">All statuses</option>
+          <option value="all">All asset states</option>
           <option value="draft">Draft</option>
           <option value="queued">Queued</option>
-          <option value="published">Published</option>
-          <option value="failed">Failed</option>
+          <option value="published">Completed</option>
+          <option value="failed">Needs review</option>
         </select>
         <button
           type="button"
           onClick={() => setPublishReadyOnly((value) => !value)}
           className={toggleClassName(publishReadyOnly)}
         >
-          Publish-ready only
+          Export-ready only
         </button>
-
-        <p className="text-sm text-zinc-400">{selectedIds.length} selected</p>
-
-        <button type="button" onClick={() => void runBatchPublish("instagram")} className={batchButtonClassName}>
-          Batch publish IG
-        </button>
-        <button type="button" onClick={() => void runBatchPublish("facebook")} className={batchButtonClassName}>
-          Batch publish FB
-        </button>
-        <button type="button" onClick={() => void runBatchPublish("both")} className={batchButtonClassName}>
-          Batch publish both
-        </button>
-
-        {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
       </div>
 
       {!filteredPosts.length ? (
         <EmptyState
-          title="No matching posts"
-          description="Adjust the filters to show a different slice of your post queue."
+          title="No matching export drafts"
+          description="Adjust the filters to show a different slice of your asset library."
         />
       ) : null}
 
@@ -165,16 +108,17 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
                   </div>
                 )}
               </div>
-
-              <label className="flex items-center gap-2 text-sm text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(post.id)}
-                  onChange={() => toggleSelection(post.id)}
-                  className="h-4 w-4 accent-white"
-                />
-                Select for batch
-              </label>
+              {generation?.selectedImageUrl ? (
+                <a
+                  href={generation.selectedImageUrl}
+                  download={`${character?.displayName ?? "persona"}-${generation.id}.jpg`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                >
+                  Download image
+                </a>
+              ) : null}
             </div>
 
             <div className="space-y-4">
@@ -184,16 +128,16 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
                     {character?.displayName ?? "Unknown persona"}
                   </h3>
                   <p className="text-sm text-zinc-400">
-                    {post.platform} • Created {formatDate(post.createdAt)}
+                    {post.platform} caption style • Created {formatDate(post.createdAt)}
                   </p>
                 </div>
                 <StatusBadge status={post.status} />
               </div>
 
               <div className="grid gap-3 text-sm text-zinc-400 md:grid-cols-4">
-                <p>Published: {formatDate(post.publishedAt)}</p>
-                <p>Scheduled: {formatDate(post.scheduledAt)}</p>
-                <p>External ID: {post.externalPostId ?? "Pending"}</p>
+                <p>Updated: {formatDate(post.updatedAt)}</p>
+                <p>Export slot: {post.status}</p>
+                <p>Asset ID: {post.id}</p>
                 <p>Shot: {generation?.shotType ?? "Unknown"}</p>
               </div>
 
@@ -210,12 +154,6 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
                 </div>
               ) : null}
 
-              {post.publishError ? (
-                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                  Publish error: {post.publishError}
-                </div>
-              ) : null}
-
               <CaptionEditor post={post} />
             </div>
           </div>
@@ -227,9 +165,6 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
 
 const inputClassName =
   "rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none";
-
-const batchButtonClassName =
-  "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]";
 
 function toggleClassName(active: boolean) {
   return `rounded-2xl border px-4 py-3 text-sm transition ${

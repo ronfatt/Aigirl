@@ -1,12 +1,9 @@
 import { Header } from "@/components/Header";
-import { MetaConnectionCard } from "@/components/MetaConnectionCard";
 
 const envKeys = [
   "OPENAI_API_KEY",
   "REPLICATE_API_TOKEN",
-  "META_ACCESS_TOKEN",
-  "META_IG_BUSINESS_ID",
-  "META_FB_PAGE_ID",
+  "REPLICATE_VIDEO_MODEL",
   "DATABASE_URL",
   "NEXT_PUBLIC_SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -20,15 +17,15 @@ const docs = [
   },
   {
     title: "Replicate",
-    description: "Connect Replicate Flux or another provider in lib/image-generator.ts.",
+    description: "Connect Flux for image generation now, and optionally set REPLICATE_VIDEO_MODEL when you are ready to swap the local clip draft builder for a real video provider.",
   },
   {
     title: "Supabase Storage",
-    description: "Persist generated files via lib/storage.ts with a server-side service role key.",
+    description: "Persist generated image assets via lib/storage.ts with a server-side service role key.",
   },
   {
-    title: "Meta Graph API",
-    description: "Replace mock publishing in lib/meta-publisher.ts with the media container and publish flow.",
+    title: "Manual IG Workflow",
+    description: "This platform now focuses on generating downloadable images, caption drafts, and short clip-ready assets for manual Instagram posting.",
   },
   {
     title: "Database",
@@ -41,7 +38,7 @@ export default function SettingsPage() {
     <div>
       <Header
         title="Settings"
-        description="Keep all service credentials server-side only. This page documents setup without exposing secret values."
+        description="Keep generation and storage credentials server-side only. This page documents the manual asset workflow without exposing secret values."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
@@ -64,8 +61,6 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-4">
-          <MetaConnectionCard />
-
           {docs.map((item) => (
             <div
               key={item.title}

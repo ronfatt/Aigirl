@@ -48,7 +48,7 @@ export default function DashboardPage() {
     <div>
       <Header
         title="Dashboard"
-        description="Track persona inventory, recent generations, and the current publishing pipeline."
+        description="Track persona inventory, recent generations, and the current manual asset pipeline."
       />
 
       {!dashboard && !error ? <LoadingState label="Loading dashboard" /> : null}
@@ -59,8 +59,8 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatsCard label="Total characters" value={dashboard.metrics.totalCharacters} hint="Active personas available for generation" />
             <StatsCard label="Generated images" value={dashboard.metrics.totalGeneratedImages} hint="All images created across generations" />
-            <StatsCard label="Draft posts" value={dashboard.metrics.totalDraftedPosts} hint="Posts waiting for review and publishing" />
-            <StatsCard label="Published posts" value={dashboard.metrics.totalPublishedPosts} hint="Completed publish requests" />
+            <StatsCard label="Caption drafts" value={dashboard.metrics.totalDraftedPosts} hint="Asset drafts waiting for export review" />
+            <StatsCard label="Approved assets" value={dashboard.metrics.totalPublishedPosts} hint="Assets already marked complete in the manual workflow" />
           </div>
 
           <div className="mt-8 grid gap-6 xl:grid-cols-2">
@@ -85,7 +85,7 @@ export default function DashboardPage() {
 
             <section className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 shadow-panel">
               <div className="mb-5 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Recent Posts</h3>
+                <h3 className="text-lg font-semibold text-white">Recent Asset Drafts</h3>
                 <p className="text-sm text-zinc-500">{dashboard.recentPosts.length} items</p>
               </div>
               <div className="space-y-4">
@@ -113,7 +113,7 @@ export default function DashboardPage() {
               <div>
                 <h3 className="text-lg font-semibold text-white">Weekly Planner</h3>
                 <p className="text-sm text-zinc-400">
-                  A lightweight 7-day content cadence based on recent generation mix.
+                  A lightweight 7-day content cadence based on recent generation mix and manual posting flow.
                 </p>
               </div>
               <p className="text-sm text-zinc-500">{dashboard.weeklyPlan.length} days</p>

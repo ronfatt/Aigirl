@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Images, LayoutDashboard, PenSquare, Settings, Sparkles, Users } from "lucide-react";
+import { Clapperboard, Images, LayoutDashboard, Settings, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -10,7 +10,7 @@ const items = [
   { href: "/character", label: "Character", icon: Users },
   { href: "/generate", label: "Generate", icon: Sparkles },
   { href: "/gallery", label: "Gallery", icon: Images },
-  { href: "/posts", label: "Posts", icon: PenSquare },
+  { href: "/posts", label: "Exports", icon: Clapperboard },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -22,7 +22,7 @@ export function Sidebar() {
       <div className="sticky top-0 z-30 border-b border-white/10 bg-card/85 px-4 py-4 backdrop-blur xl:hidden">
         <div className="mb-4">
           <p className="text-[11px] uppercase tracking-[0.32em] text-zinc-500">
-            AI Persona Publisher
+            AI Persona Studio
           </p>
           <h1 className="mt-2 text-lg font-semibold text-white">Creator Console</h1>
         </div>
@@ -52,10 +52,10 @@ export function Sidebar() {
 
       <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-border bg-card/80 p-6 backdrop-blur xl:block">
         <div className="mb-10">
-          <p className="text-xs uppercase tracking-[0.32em] text-zinc-500">AI Persona Publisher</p>
+          <p className="text-xs uppercase tracking-[0.32em] text-zinc-500">AI Persona Studio</p>
           <h1 className="mt-3 text-2xl font-semibold text-white">Creator Console</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Build realistic persona content flows with clean publishing controls.
+            Build consistent image and clip-ready persona assets for manual Instagram posting.
           </p>
         </div>
 

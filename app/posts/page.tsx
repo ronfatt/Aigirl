@@ -51,8 +51,8 @@ export default function PostsPage() {
   return (
     <div>
       <Header
-        title="Posts"
-        description="Review draft captions, set publishing targets, and trigger the current publish abstraction."
+        title="Exports"
+        description="Review image assets, tune platform-specific captions, and prepare manual Instagram-ready download packages."
       />
       {!snapshot && !error ? <LoadingState label="Loading posts" /> : null}
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
