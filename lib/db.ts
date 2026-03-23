@@ -455,6 +455,24 @@ function isMissingRelationError(error: unknown, relationName: string) {
   );
 }
 
+function isMissingColumnError(error: unknown, columnName: string) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
+  const message =
+    "message" in error ? String((error as { message?: string }).message ?? "").toLowerCase() : "";
+  const details =
+    "details" in error ? String((error as { details?: string }).details ?? "").toLowerCase() : "";
+
+  return (
+    code === "42703" ||
+    message.includes(columnName.toLowerCase()) ||
+    details.includes(columnName.toLowerCase())
+  );
+}
+
 async function withBootstrapOnMissingSchema<T>(query: () => Promise<T>) {
   try {
     return await query();
@@ -1360,17 +1378,54 @@ async function insertGenerationRecord(input: {
       is_archived: false,
     };
 
-    const { data, error } = await supabase
+    const primaryInsert = await supabase
       .from("generations")
       .insert(payload)
       .select("*")
       .single();
 
-    if (error) {
-      throw error;
+    if (!primaryInsert.error) {
+      return mapGenerationRow(primaryInsert.data as DbGenerationRow);
     }
 
-    return mapGenerationRow(data as DbGenerationRow);
+    const compatibilityColumns = [
+      "mode",
+      "sensual_pose_bias",
+      "shot_type",
+      "quality_tags",
+      "is_favorite",
+      "is_archived",
+    ];
+
+    const shouldRetryCompat = compatibilityColumns.some((column) =>
+      isMissingColumnError(primaryInsert.error, column),
+    );
+
+    if (!shouldRetryCompat) {
+      throw primaryInsert.error;
+    }
+
+    const fallbackPayload = {
+      id: input.id,
+      character_id: input.characterId,
+      scene_template_id: input.sceneTemplateId,
+      final_prompt: input.finalPrompt,
+      image_urls: input.imageUrls,
+      selected_image_url: null,
+      status: "completed",
+    };
+
+    const fallbackInsert = await supabase
+      .from("generations")
+      .insert(fallbackPayload)
+      .select("*")
+      .single();
+
+    if (fallbackInsert.error) {
+      throw fallbackInsert.error;
+    }
+
+    return mapGenerationRow(fallbackInsert.data as DbGenerationRow);
   }
 
   const sql = requireSql();
