@@ -2225,6 +2225,7 @@ export async function getDashboardData(): Promise<DashboardPayload> {
       ),
       totalDraftedPosts: state.posts.filter((post) => post.status === "draft").length,
       totalPublishedPosts: state.posts.filter((post) => post.status === "published").length,
+      totalVideoClips: state.videoClips.length,
     },
     recentGenerations: state.generations.slice(0, 5).map((generation) => {
       const characterName =
@@ -2249,6 +2250,21 @@ export async function getDashboardData(): Promise<DashboardPayload> {
         imageUrl,
       };
     }),
+    recentVideoClips: state.videoClips.slice(0, 4).map((clip) => {
+      const characterName =
+        state.characters.find((item) => item.id === clip.characterId)?.displayName ?? "Unknown";
+      const sceneTitle =
+        sceneLibrary.find((item) => item.id === clip.sceneTemplateId)?.title ?? "Scene";
+      const sourcePostId =
+        state.posts.find((item) => item.generationId === clip.generationId)?.id ?? null;
+
+      return {
+        ...clip,
+        characterName,
+        sceneTitle,
+        sourcePostId,
+      };
+    }),
     weeklyPlan: buildWeeklyPlan(
       state.generations.map((generation) => ({
         ...generation,
@@ -2267,8 +2283,13 @@ export async function getDashboardData(): Promise<DashboardPayload> {
     return buildPayload(getMemoryState());
   }
 
-  const [characters, generations, posts] = await withReadTimeout("getDashboardData", async () =>
-    Promise.all([listCharactersFromDb(), listGenerationsFromDb(), listPostsFromDb()]),
+  const [characters, generations, posts, videoClips] = await withReadTimeout("getDashboardData", async () =>
+    Promise.all([
+      listCharactersFromDb(),
+      listGenerationsFromDb(),
+      listPostsFromDb(),
+      listVideoClipsFromDb(),
+    ]),
   );
 
   return {
@@ -2280,6 +2301,7 @@ export async function getDashboardData(): Promise<DashboardPayload> {
       ),
       totalDraftedPosts: posts.filter((post) => post.status === "draft").length,
       totalPublishedPosts: posts.filter((post) => post.status === "published").length,
+      totalVideoClips: videoClips.length,
     },
     recentGenerations: generations.slice(0, 5).map((generation) => {
       const characterName =
@@ -2303,6 +2325,20 @@ export async function getDashboardData(): Promise<DashboardPayload> {
         ...post,
         characterName,
         imageUrl,
+      };
+    }),
+    recentVideoClips: videoClips.slice(0, 4).map((clip) => {
+      const characterName =
+        characters.find((item) => item.id === clip.characterId)?.displayName ?? "Unknown";
+      const sceneTitle =
+        sceneLibrary.find((item) => item.id === clip.sceneTemplateId)?.title ?? "Scene";
+      const sourcePostId = posts.find((item) => item.generationId === clip.generationId)?.id ?? null;
+
+      return {
+        ...clip,
+        characterName,
+        sceneTitle,
+        sourcePostId,
       };
     }),
     weeklyPlan: buildWeeklyPlan(

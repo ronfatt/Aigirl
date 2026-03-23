@@ -83,12 +83,16 @@ export interface DashboardMetrics {
   totalGeneratedImages: number;
   totalDraftedPosts: number;
   totalPublishedPosts: number;
+  totalVideoClips: number;
 }
 
 export interface DashboardPayload {
   metrics: DashboardMetrics;
   recentGenerations: Array<Generation & { characterName: string; sceneTitle: string }>;
   recentPosts: Array<Post & { characterName: string; imageUrl: string | null }>;
+  recentVideoClips: Array<
+    VideoClipDraft & { characterName: string; sceneTitle: string; sourcePostId: string | null }
+  >;
   weeklyPlan: WeeklyPlanItem[];
 }
 
