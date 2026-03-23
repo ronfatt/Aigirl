@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
@@ -77,6 +78,17 @@ export function GalleryWorkspace() {
         return true;
       }),
     [approvedOnly, favoritesOnly, history, modeFilter, publishReadyOnly, sceneFilter, showArchived, statusFilter],
+  );
+
+  const summary = useMemo(
+    () => ({
+      total: history.length,
+      visible: filteredHistory.length,
+      approved: history.filter((item) => item.status === "approved").length,
+      favorites: history.filter((item) => item.isFavorite).length,
+      publishReady: history.filter((item) => item.qualityTags.includes("publish-ready")).length,
+    }),
+    [filteredHistory.length, history],
   );
 
   async function patchGeneration(id: string, payload: {
@@ -165,28 +177,65 @@ export function GalleryWorkspace() {
     <div>
       <Header
         title="Gallery"
-        description="Browse all generated assets, batch-manage your library, and recover approved visuals faster."
+        description="A simple asset browser for reviewing stills, clip drafts, and the images you want to turn into export packs."
       />
 
-      <div className="mb-4 flex flex-wrap gap-3">
-        <button type="button" onClick={activateApprovedFavoritesView} className={batchButtonClassName}>
-          Approved favorites
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setModeFilter("all");
-            setSceneFilter("all");
-            setStatusFilter("all");
-            setFavoritesOnly(false);
-            setApprovedOnly(false);
-            setPublishReadyOnly(false);
-            setShowArchived(false);
-          }}
-          className={batchButtonClassName}
-        >
-          Clear quick views
-        </button>
+      <div className="mb-6 grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+        <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 shadow-panel">
+          <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">Library browser</p>
+          <h3 className="mt-3 text-2xl font-semibold text-white">Find good assets quickly</h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+            Use quick views first, then narrow by mode or scene only when you need to. The goal here is fast browsing, not heavy admin work.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button type="button" onClick={activateApprovedFavoritesView} className={batchButtonClassName}>
+              Approved favorites
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setModeFilter("all");
+                setSceneFilter("all");
+                setStatusFilter("all");
+                setFavoritesOnly(false);
+                setApprovedOnly(false);
+                setPublishReadyOnly(false);
+                setShowArchived(false);
+              }}
+              className={batchButtonClassName}
+            >
+              Clear quick views
+            </button>
+            <Link href="/generate" className={batchButtonClassName}>
+              Open Create
+            </Link>
+            <Link href="/posts" className={batchButtonClassName}>
+              Open Exports
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Visible now</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{summary.visible}</p>
+            <p className="mt-1 text-sm text-zinc-400">Items matching current filters</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-3">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Approved</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{summary.approved}</p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Favorites</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{summary.favorites}</p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Ready</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{summary.publishReady}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mb-6 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
@@ -339,7 +388,12 @@ export function GalleryWorkspace() {
                   <StatusBadge status={item.status} />
                 </div>
 
-                <p className="text-xs text-zinc-500">{formatDate(item.createdAt)}</p>
+                <div className="space-y-1 text-xs text-zinc-500">
+                  <p>{formatDate(item.createdAt)}</p>
+                  <p>
+                    {item.linkedPostId ? `Export pack: ${item.linkedPostStatus ?? "draft"}` : "Export pack: not created"}
+                  </p>
+                </div>
 
                 <div className="flex flex-wrap gap-2">
                   {item.qualityTags.map((tag) => (
@@ -364,8 +418,13 @@ export function GalleryWorkspace() {
                     {item.isFavorite ? "Unfavorite" : "Favorite"}
                   </button>
                   <button type="button" onClick={() => void createDraft(item.id).then(loadHistory)} className={batchButtonClassName}>
-                    Draft
+                    Create draft
                   </button>
+                  {item.linkedPostId ? (
+                    <Link href={`/posts/${item.linkedPostId}`} className={batchButtonClassName}>
+                      Open pack
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </div>
