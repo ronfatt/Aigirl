@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CaptionEditor } from "@/components/CaptionEditor";
 import { EmptyState } from "@/components/EmptyState";
@@ -197,7 +198,15 @@ export function PostTable({ posts, characters, generations, videoClips }: PostTa
                     Export pack • {post.platform} caption style • Created {formatDate(post.createdAt)}
                   </p>
                 </div>
-                <StatusBadge status={post.status} />
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/posts/${post.id}`}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                  >
+                    Open pack
+                  </Link>
+                  <StatusBadge status={post.status} />
+                </div>
               </div>
 
               <div className="grid gap-3 text-sm text-zinc-400 md:grid-cols-4">
