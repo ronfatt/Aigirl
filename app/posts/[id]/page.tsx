@@ -22,6 +22,7 @@ export default function AssetPackPage({
     videoClips: VideoClipDraft[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -68,6 +69,66 @@ export default function AssetPackPage({
     };
   }, [params]);
 
+  async function downloadAllAssets() {
+    if (!data || downloading) {
+      return;
+    }
+
+    setDownloading(true);
+
+    try {
+      const baseName = (data.character?.displayName ?? "persona")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const links: Array<{ href: string; filename: string }> = [];
+
+      if (data.generation?.selectedImageUrl) {
+        links.push({
+          href: data.generation.selectedImageUrl,
+          filename: `${baseName || "persona"}-${data.generation.id}.jpg`,
+        });
+      }
+
+      data.videoClips.forEach((clip, index) => {
+        links.push({
+          href: clip.videoUrl,
+          filename: `${baseName || "persona"}-clip-${index + 1}.webm`,
+        });
+      });
+
+      const captionContent = [
+        `Persona: ${data.character?.displayName ?? "Unknown"}`,
+        `Caption style: ${data.post.platform}`,
+        "",
+        data.post.caption,
+      ].join("\n");
+      const captionBlob = new Blob([captionContent], { type: "text/plain;charset=utf-8" });
+      const captionUrl = URL.createObjectURL(captionBlob);
+      links.push({
+        href: captionUrl,
+        filename: `${baseName || "persona"}-caption.txt`,
+      });
+
+      links.forEach((item, index) => {
+        window.setTimeout(() => {
+          const anchor = document.createElement("a");
+          anchor.href = item.href;
+          anchor.download = item.filename;
+          anchor.rel = "noreferrer";
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+        }, index * 180);
+      });
+
+      window.setTimeout(() => URL.revokeObjectURL(captionUrl), links.length * 200 + 500);
+    } finally {
+      window.setTimeout(() => setDownloading(false), 700);
+    }
+  }
+
   return (
     <div>
       <Header
@@ -87,6 +148,13 @@ export default function AssetPackPage({
             >
               Back to Exports
             </Link>
+            <button
+              type="button"
+              onClick={() => void downloadAllAssets()}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+            >
+              {downloading ? "Preparing downloads..." : "Download all"}
+            </button>
             <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">
               Asset ID: {postId}
             </span>
@@ -116,6 +184,13 @@ export default function AssetPackPage({
                       Download image
                     </a>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={() => void downloadAllAssets()}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                  >
+                    Download pack
+                  </button>
                 </div>
               </div>
 

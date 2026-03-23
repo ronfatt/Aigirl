@@ -94,6 +94,7 @@ export interface DashboardPayload {
     VideoClipDraft & { characterName: string; sceneTitle: string; sourcePostId: string | null }
   >;
   weeklyPlan: WeeklyPlanItem[];
+  warning?: string | null;
 }
 
 export interface GenerationHistoryItem extends Generation {
