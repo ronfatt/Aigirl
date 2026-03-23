@@ -179,3 +179,20 @@ export interface MetaConnectionTestResult {
 }
 
 export type ContentBucket = "selfie" | "lifestyle" | "travel" | "gym" | "sexy";
+export type VideoClipStatus = "draft" | "archived";
+
+export interface VideoClipDraft {
+  id: string;
+  generationId: string;
+  characterId: string;
+  sceneTemplateId: string;
+  sourceImageUrl: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  motionPresetId: string;
+  motionLabel: string;
+  motionPrompt: string;
+  durationSeconds: number;
+  status: VideoClipStatus;
+  createdAt: string;
+}

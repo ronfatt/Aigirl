@@ -136,3 +136,32 @@ export async function storeReferenceImage(input: {
     provider: "supabase-storage" as const,
   };
 }
+
+export async function storeGeneratedVideo(input: {
+  bytes: ArrayBuffer;
+  filename: string;
+  contentType?: string;
+}) {
+  if (!storageEnabled) {
+    throw new Error("Supabase Storage is not configured.");
+  }
+
+  const client = getSupabaseStorageClient();
+  const extension = input.filename.includes(".") ? "" : ".webm";
+  const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const filePath = `clips/${new Date().toISOString().slice(0, 10)}/${safeName}${extension}`;
+
+  const upload = await client.storage.from(storageBucket).upload(filePath, input.bytes, {
+    contentType: input.contentType || "video/webm",
+    upsert: true,
+  });
+
+  if (upload.error) {
+    throw upload.error;
+  }
+
+  return {
+    url: await resolveStoredAssetUrl(filePath),
+    provider: "supabase-storage" as const,
+  };
+}

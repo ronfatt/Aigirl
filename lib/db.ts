@@ -14,6 +14,8 @@ import {
   SensualPoseBias,
   ShotType,
   StyleMode,
+  VideoClipDraft,
+  VideoClipStatus,
 } from "@/lib/types";
 import { sceneLibrary } from "@/lib/scene-library";
 import { buildWeeklyPlan } from "@/lib/content-strategy";
@@ -27,6 +29,7 @@ type DatabaseState = {
   characters: Character[];
   generations: Generation[];
   posts: Post[];
+  videoClips: VideoClipDraft[];
 };
 
 type DbCharacterRow = {
@@ -109,6 +112,33 @@ type DbPostRow = {
   created_at?: string | Date;
   updatedAt?: string | Date;
   updated_at?: string | Date;
+};
+
+type DbVideoClipRow = {
+  id: string;
+  generationId?: string;
+  generation_id?: string;
+  characterId?: string;
+  character_id?: string;
+  sceneTemplateId?: string;
+  scene_template_id?: string;
+  sourceImageUrl?: string;
+  source_image_url?: string;
+  videoUrl?: string;
+  video_url?: string;
+  thumbnailUrl?: string;
+  thumbnail_url?: string;
+  motionPresetId?: string;
+  motion_preset_id?: string;
+  motionLabel?: string;
+  motion_label?: string;
+  motionPrompt?: string;
+  motion_prompt?: string;
+  durationSeconds?: number;
+  duration_seconds?: number;
+  status: VideoClipStatus;
+  createdAt?: string | Date;
+  created_at?: string | Date;
 };
 
 declare global {
@@ -203,6 +233,7 @@ function createSeedState(): DatabaseState {
         updatedAt: timestamp,
       },
     ],
+    videoClips: [],
   };
 }
 
@@ -353,6 +384,24 @@ function mapPostRow(row: DbPostRow): Post {
   };
 }
 
+function mapVideoClipRow(row: DbVideoClipRow): VideoClipDraft {
+  return {
+    id: row.id,
+    generationId: row.generationId ?? row.generation_id ?? "",
+    characterId: row.characterId ?? row.character_id ?? "",
+    sceneTemplateId: row.sceneTemplateId ?? row.scene_template_id ?? "",
+    sourceImageUrl: row.sourceImageUrl ?? row.source_image_url ?? "",
+    videoUrl: row.videoUrl ?? row.video_url ?? "",
+    thumbnailUrl: row.thumbnailUrl ?? row.thumbnail_url ?? "",
+    motionPresetId: row.motionPresetId ?? row.motion_preset_id ?? "",
+    motionLabel: row.motionLabel ?? row.motion_label ?? "",
+    motionPrompt: row.motionPrompt ?? row.motion_prompt ?? "",
+    durationSeconds: row.durationSeconds ?? row.duration_seconds ?? 0,
+    status: row.status,
+    createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
+  };
+}
+
 function getSql() {
   if (!hasDatabaseUrl) {
     return null;
@@ -485,6 +534,24 @@ async function ensureDatabaseReady() {
           external_post_id text,
           created_at timestamptz not null default now(),
           updated_at timestamptz not null default now()
+        )
+      `;
+
+      await sql`
+        create table if not exists video_clips (
+          id text primary key,
+          generation_id text not null references generations(id) on delete cascade,
+          character_id text not null references characters(id) on delete cascade,
+          scene_template_id text not null references scene_templates(id),
+          source_image_url text not null,
+          video_url text not null,
+          thumbnail_url text not null,
+          motion_preset_id text not null,
+          motion_label text not null,
+          motion_prompt text not null,
+          duration_seconds integer not null,
+          status text not null default 'draft',
+          created_at timestamptz not null default now()
         )
       `;
 
@@ -643,6 +710,47 @@ async function listPostsFromDb() {
   );
 
   return rows.map(mapPostRow);
+}
+
+async function listVideoClipsFromDb() {
+  const supabase = getSupabaseDbClient();
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("video_clips")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).map((row) => mapVideoClipRow(row as DbVideoClipRow));
+  }
+
+  const sql = requireSql();
+  const rows = await withBootstrapOnMissingSchema(() =>
+    sql<DbVideoClipRow[]>`
+      select
+        id,
+        generation_id,
+        character_id,
+        scene_template_id,
+        source_image_url,
+        video_url,
+        thumbnail_url,
+        motion_preset_id,
+        motion_label,
+        motion_prompt,
+        duration_seconds,
+        status,
+        created_at
+      from video_clips
+      order by created_at desc
+    `,
+  );
+
+  return rows.map(mapVideoClipRow);
 }
 
 async function listGenerationsFromDb() {
@@ -938,6 +1046,7 @@ export async function deleteCharacter(id: string) {
     state.characters.splice(index, 1);
     state.generations = state.generations.filter((generation) => generation.characterId !== id);
     state.posts = state.posts.filter((post) => post.characterId !== id);
+    state.videoClips = state.videoClips.filter((clip) => clip.characterId !== id);
     return true;
   }
 
@@ -979,6 +1088,14 @@ export async function listPosts() {
   }
 
   return withReadTimeout("listPosts", () => listPostsFromDb());
+}
+
+export async function listVideoClips() {
+  if (!hasDatabaseUrl) {
+    return getMemoryState().videoClips;
+  }
+
+  return withReadTimeout("listVideoClips", () => listVideoClipsFromDb());
 }
 
 export async function updatePost(
@@ -1165,6 +1282,7 @@ export async function deleteGeneration(id: string) {
     const originalLength = state.generations.length;
     state.generations = state.generations.filter((generation) => generation.id !== id);
     state.posts = state.posts.filter((post) => post.generationId !== id);
+    state.videoClips = state.videoClips.filter((clip) => clip.generationId !== id);
     return state.generations.length !== originalLength;
   }
 
@@ -1704,6 +1822,123 @@ export async function createDraftPostForGeneration(generationId: string) {
   return selectGenerationImage(generationId, targetImage);
 }
 
+export async function createVideoClipDraft(input: {
+  generationId: string;
+  sourceImageUrl: string;
+  videoUrl: string;
+  motionPresetId: string;
+  motionLabel: string;
+  motionPrompt: string;
+  durationSeconds: number;
+}) {
+  const snapshot = await getDatabaseSnapshot();
+  const generation = snapshot.generations.find((item) => item.id === input.generationId) ?? null;
+
+  if (!generation) {
+    throw new Error("Generation not found.");
+  }
+
+  const clip: VideoClipDraft = {
+    id: makeId("clip"),
+    generationId: generation.id,
+    characterId: generation.characterId,
+    sceneTemplateId: generation.sceneTemplateId,
+    sourceImageUrl: input.sourceImageUrl,
+    videoUrl: input.videoUrl,
+    thumbnailUrl: generation.selectedImageUrl ?? generation.imageUrls[0] ?? input.sourceImageUrl,
+    motionPresetId: input.motionPresetId,
+    motionLabel: input.motionLabel,
+    motionPrompt: input.motionPrompt,
+    durationSeconds: input.durationSeconds,
+    status: "draft",
+    createdAt: now(),
+  };
+
+  if (!hasDatabaseUrl) {
+    getMemoryState().videoClips.unshift(clip);
+    return clip;
+  }
+
+  const supabase = getSupabaseDbClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("video_clips")
+      .insert({
+        id: clip.id,
+        generation_id: clip.generationId,
+        character_id: clip.characterId,
+        scene_template_id: clip.sceneTemplateId,
+        source_image_url: clip.sourceImageUrl,
+        video_url: clip.videoUrl,
+        thumbnail_url: clip.thumbnailUrl,
+        motion_preset_id: clip.motionPresetId,
+        motion_label: clip.motionLabel,
+        motion_prompt: clip.motionPrompt,
+        duration_seconds: clip.durationSeconds,
+        status: clip.status,
+        created_at: clip.createdAt,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return mapVideoClipRow(data as DbVideoClipRow);
+  }
+
+  const sql = requireSql();
+  await ensureDatabaseReady();
+  const rows = await sql<DbVideoClipRow[]>`
+    insert into video_clips (
+      id,
+      generation_id,
+      character_id,
+      scene_template_id,
+      source_image_url,
+      video_url,
+      thumbnail_url,
+      motion_preset_id,
+      motion_label,
+      motion_prompt,
+      duration_seconds,
+      status,
+      created_at
+    ) values (
+      ${clip.id},
+      ${clip.generationId},
+      ${clip.characterId},
+      ${clip.sceneTemplateId},
+      ${clip.sourceImageUrl},
+      ${clip.videoUrl},
+      ${clip.thumbnailUrl},
+      ${clip.motionPresetId},
+      ${clip.motionLabel},
+      ${clip.motionPrompt},
+      ${clip.durationSeconds},
+      ${clip.status},
+      ${clip.createdAt}
+    )
+    returning
+      id,
+      generation_id,
+      character_id,
+      scene_template_id,
+      source_image_url,
+      video_url,
+      thumbnail_url,
+      motion_preset_id,
+      motion_label,
+      motion_prompt,
+      duration_seconds,
+      status,
+      created_at
+  `;
+
+  return mapVideoClipRow(rows[0]);
+}
+
 export async function publishPost(postId: string, platform?: Platform) {
   if (!hasDatabaseUrl) {
     const state = getMemoryState();
@@ -2090,13 +2325,19 @@ export async function getDatabaseSnapshot() {
     return getMemoryState();
   }
 
-  const [characters, generations, posts] = await withReadTimeout("getDatabaseSnapshot", async () =>
-    Promise.all([listCharactersFromDb(), listGenerationsFromDb(), listPostsFromDb()]),
+  const [characters, generations, posts, videoClips] = await withReadTimeout("getDatabaseSnapshot", async () =>
+    Promise.all([
+      listCharactersFromDb(),
+      listGenerationsFromDb(),
+      listPostsFromDb(),
+      listVideoClipsFromDb(),
+    ]),
   );
 
   return {
     characters,
     generations,
     posts,
+    videoClips,
   };
 }

@@ -5,16 +5,17 @@ import { useMemo, useState } from "react";
 import { CaptionEditor } from "@/components/CaptionEditor";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Character, Generation, Platform, Post, PostStatus } from "@/lib/types";
+import { Character, Generation, Platform, Post, PostStatus, VideoClipDraft } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 interface PostTableProps {
   posts: Post[];
   characters: Character[];
   generations: Generation[];
+  videoClips: VideoClipDraft[];
 }
 
-export function PostTable({ posts, characters, generations }: PostTableProps) {
+export function PostTable({ posts, characters, generations, videoClips }: PostTableProps) {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
   const [publishReadyOnly, setPublishReadyOnly] = useState(false);
@@ -35,7 +36,7 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
     [generations, platformFilter, posts, publishReadyOnly, statusFilter],
   );
 
-  if (!posts.length) {
+  if (!posts.length && !videoClips.length) {
     return (
       <EmptyState
         title="No export drafts yet"
@@ -46,6 +47,70 @@ export function PostTable({ posts, characters, generations }: PostTableProps) {
 
   return (
     <div className="space-y-4">
+      {videoClips.length ? (
+        <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 shadow-panel">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Saved video clips</h3>
+              <p className="text-sm text-zinc-400">
+                Rendered clip drafts saved for manual posting and download.
+              </p>
+            </div>
+            <p className="text-sm text-zinc-500">{videoClips.length} clips</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {videoClips.slice(0, 6).map((clip) => {
+              const character = characters.find((item) => item.id === clip.characterId);
+              const generation = generations.find((item) => item.id === clip.generationId);
+
+              return (
+                <div key={clip.id} className="overflow-hidden rounded-[1.3rem] border border-white/10 bg-black/10">
+                  <div className="relative h-64">
+                    <video
+                      controls
+                      playsInline
+                      src={clip.videoUrl}
+                      poster={clip.thumbnailUrl}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white">{character?.displayName ?? "Persona"}</p>
+                        <p className="text-sm text-zinc-400">{clip.motionLabel}</p>
+                      </div>
+                      <StatusBadge status={generation?.status ?? "completed"} />
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      {clip.durationSeconds}s • {formatDate(clip.createdAt)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={clip.videoUrl}
+                        download={`${character?.displayName ?? "persona"}-${clip.id}.webm`}
+                        className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                      >
+                        Download clip
+                      </a>
+                      <a
+                        href={clip.sourceImageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08]"
+                      >
+                        View source
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-4">
         <select
           value={platformFilter}

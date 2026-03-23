@@ -7,11 +7,12 @@ import { Header } from "@/components/Header";
 import { LoadingState } from "@/components/LoadingState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { sceneLibrary } from "@/lib/scene-library";
-import { GenerationHistoryItem, QualityTag, StyleMode } from "@/lib/types";
+import { GenerationHistoryItem, QualityTag, StyleMode, VideoClipDraft } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 export function GalleryWorkspace() {
   const [history, setHistory] = useState<GenerationHistoryItem[]>([]);
+  const [videoClips, setVideoClips] = useState<VideoClipDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -29,17 +30,29 @@ export function GalleryWorkspace() {
     setError(null);
 
     try {
-      const response = await fetch("/api/generations");
-      const payload = (await response.json()) as {
+      const [generationResponse, clipResponse] = await Promise.all([
+        fetch("/api/generations"),
+        fetch("/api/video-clips"),
+      ]);
+      const generationPayload = (await generationResponse.json()) as {
         generations?: GenerationHistoryItem[];
         error?: string;
       };
+      const clipPayload = (await clipResponse.json()) as {
+        clips?: VideoClipDraft[];
+        error?: string;
+      };
 
-      if (!response.ok) {
-        throw new Error(payload.error || "Unable to load gallery.");
+      if (!generationResponse.ok) {
+        throw new Error(generationPayload.error || "Unable to load gallery.");
       }
 
-      setHistory(payload.generations ?? []);
+      if (!clipResponse.ok) {
+        throw new Error(clipPayload.error || "Unable to load saved clips.");
+      }
+
+      setHistory(generationPayload.generations ?? []);
+      setVideoClips(clipPayload.clips ?? []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load gallery.");
     } finally {
@@ -236,6 +249,47 @@ export function GalleryWorkspace() {
           Delete
         </button>
       </div>
+
+      {videoClips.length ? (
+        <div className="mb-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 shadow-panel">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Saved clip drafts</h3>
+              <p className="text-sm text-zinc-400">
+                Vertical motion drafts saved from approved stills.
+              </p>
+            </div>
+            <p className="text-sm text-zinc-500">{videoClips.length} clips</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {videoClips.slice(0, 3).map((clip) => {
+              const generation = history.find((item) => item.id === clip.generationId);
+
+              return (
+                <div key={clip.id} className="overflow-hidden rounded-[1.3rem] border border-white/10 bg-black/10">
+                  <div className="relative h-64">
+                    <video
+                      controls
+                      playsInline
+                      src={clip.videoUrl}
+                      poster={clip.thumbnailUrl}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="space-y-2 p-4">
+                    <p className="font-medium text-white">{generation?.characterName ?? "Persona clip"}</p>
+                    <p className="text-sm text-zinc-400">{clip.motionLabel}</p>
+                    <p className="text-xs text-zinc-500">
+                      {clip.durationSeconds}s • {formatDate(clip.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {loading ? <LoadingState label="Loading gallery" /> : null}
       {error ? <p className="mb-4 text-sm text-rose-300">{error}</p> : null}

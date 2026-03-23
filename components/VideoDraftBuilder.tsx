@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { VideoClipDraft } from "@/lib/types";
 
 type MotionPreset = {
   id: string;
@@ -37,21 +38,32 @@ const motionPresets: MotionPreset[] = [
 ];
 
 interface VideoDraftBuilderProps {
+  generationId: string;
   imageUrl: string;
   characterName: string;
   sceneTitle: string;
+  onClipSaved?: (clip: VideoClipDraft) => void;
 }
 
 const FRAME_RATE = 15;
 const WIDTH = 1080;
 const HEIGHT = 1920;
 
-export function VideoDraftBuilder({ imageUrl, characterName, sceneTitle }: VideoDraftBuilderProps) {
+export function VideoDraftBuilder({
+  generationId,
+  imageUrl,
+  characterName,
+  sceneTitle,
+  onClipSaved,
+}: VideoDraftBuilderProps) {
   const [motionPresetId, setMotionPresetId] = useState(motionPresets[0].id);
   const [durationSeconds, setDurationSeconds] = useState(6);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [isRendering, setIsRendering] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const motionPreset = useMemo(
     () => motionPresets.find((preset) => preset.id === motionPresetId) ?? motionPresets[0],
@@ -75,6 +87,8 @@ export function VideoDraftBuilder({ imageUrl, characterName, sceneTitle }: Video
         URL.revokeObjectURL(videoUrl);
         setVideoUrl(null);
       }
+      setVideoBlob(null);
+      setSuccessMessage(null);
 
       const response = await fetch(imageUrl, { cache: "no-store" });
 
@@ -126,6 +140,7 @@ export function VideoDraftBuilder({ imageUrl, characterName, sceneTitle }: Video
       recorder.stop();
       const blob = await finished;
       const nextUrl = URL.createObjectURL(blob);
+      setVideoBlob(blob);
       setVideoUrl(nextUrl);
     } catch (renderError) {
       setError(renderError instanceof Error ? renderError.message : "Unable to render the clip draft.");
@@ -154,6 +169,51 @@ export function VideoDraftBuilder({ imageUrl, characterName, sceneTitle }: Video
     anchor.download = `${characterName.toLowerCase().replace(/\s+/g, "-")}-${sceneTitle.toLowerCase().replace(/\s+/g, "-")}-clip-pack.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function saveClip() {
+    if (!videoBlob) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("generationId", generationId);
+      formData.append("sourceImageUrl", imageUrl);
+      formData.append("motionPresetId", motionPreset.id);
+      formData.append("motionLabel", motionPreset.label);
+      formData.append("motionPrompt", motionPreset.motionLine);
+      formData.append("durationSeconds", String(durationSeconds));
+      formData.append(
+        "file",
+        new File(
+          [videoBlob],
+          `${characterName.toLowerCase().replace(/\s+/g, "-")}-${sceneTitle.toLowerCase().replace(/\s+/g, "-")}.webm`,
+          { type: "video/webm" },
+        ),
+      );
+
+      const response = await fetch("/api/video-clips", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as { clip?: VideoClipDraft; error?: string };
+
+      if (!response.ok || !payload.clip) {
+        throw new Error(payload.error || "Unable to save video clip.");
+      }
+
+      setSuccessMessage(`Saved clip draft: ${payload.clip.id}`);
+      onClipSaved?.(payload.clip);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save video clip.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -223,6 +283,7 @@ export function VideoDraftBuilder({ imageUrl, characterName, sceneTitle }: Video
           </button>
 
           {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {successMessage ? <p className="text-sm text-emerald-300">{successMessage}</p> : null}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
@@ -242,6 +303,14 @@ export function VideoDraftBuilder({ imageUrl, characterName, sceneTitle }: Video
               >
                 Download clip
               </a>
+              <button
+                type="button"
+                onClick={() => void saveClip()}
+                disabled={isSaving}
+                className="ml-2 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? "Saving..." : "Save to library"}
+              </button>
             </div>
           ) : (
             <div className="flex aspect-[9/16] items-center justify-center rounded-2xl border border-dashed border-white/10 text-sm text-zinc-500">

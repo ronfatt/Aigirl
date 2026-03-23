@@ -4,14 +4,15 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { LoadingState } from "@/components/LoadingState";
 import { PostTable } from "@/components/PostTable";
-import { Character, Generation, Post } from "@/lib/types";
+import { Character, Generation, Post, VideoClipDraft } from "@/lib/types";
 
 export default function PostsPage() {
   const [snapshot, setSnapshot] = useState<{
-    posts: Post[];
-    characters: Character[];
-    generations: Generation[];
-  } | null>(null);
+      posts: Post[];
+      characters: Character[];
+      generations: Generation[];
+      videoClips: VideoClipDraft[];
+    } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function PostsPage() {
           posts: Post[];
           characters: Character[];
           generations: Generation[];
+          videoClips: VideoClipDraft[];
         };
 
         if (active) {
@@ -61,6 +63,7 @@ export default function PostsPage() {
           posts={snapshot.posts}
           characters={snapshot.characters}
           generations={snapshot.generations}
+          videoClips={snapshot.videoClips}
         />
       ) : null}
     </div>

@@ -20,6 +20,7 @@ import {
   QualityTag,
   SensualPoseBias,
   StyleMode,
+  VideoClipDraft,
 } from "@/lib/types";
 import { composeImagePrompt } from "@/lib/prompts";
 import { formatDate } from "@/lib/utils";
@@ -104,6 +105,7 @@ export function GenerateWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [clipMessage, setClipMessage] = useState<string | null>(null);
   const [historyModeFilter, setHistoryModeFilter] = useState<StyleMode | "all">("all");
   const [historySceneFilter, setHistorySceneFilter] = useState<string>("all");
   const [historyStatusFilter, setHistoryStatusFilter] =
@@ -392,6 +394,7 @@ export function GenerateWorkspace({
     setSelectedImage(null);
     setCaptionOptions([]);
     setSelectedCaption(null);
+    setClipMessage(null);
 
     startTransition(async () => {
       try {
@@ -853,11 +856,17 @@ export function GenerateWorkspace({
 
       {generation?.selectedImageUrl ? (
         <VideoDraftBuilder
+          generationId={generation.id}
           imageUrl={generation.selectedImageUrl}
           characterName={currentCharacter?.displayName ?? "Persona"}
           sceneTitle={currentScene?.title ?? "Clip"}
+          onClipSaved={(clip: VideoClipDraft) => {
+            setClipMessage(`Saved clip draft: ${clip.id}`);
+          }}
         />
       ) : null}
+
+      {clipMessage ? <p className="mt-3 text-sm text-emerald-300">{clipMessage}</p> : null}
 
       {draftPostId && captionOptions.length ? (
         <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel">
