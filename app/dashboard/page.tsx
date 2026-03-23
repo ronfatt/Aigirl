@@ -87,6 +87,8 @@ export default function DashboardPage() {
     };
   }, [dashboard]);
 
+  const todayPack = dashboard?.weeklyPlan[0] ?? null;
+
   return (
     <div>
       <Header
@@ -126,6 +128,14 @@ export default function DashboardPage() {
                 >
                   Open Exports
                 </Link>
+                {todayPack ? (
+                  <Link
+                    href={`/generate?sceneId=${todayPack.sceneId}&mode=${todayPack.mode}`}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white transition hover:bg-white/[0.08]"
+                  >
+                    Create today&apos;s asset pack
+                  </Link>
+                ) : null}
               </div>
             </div>
 
@@ -174,11 +184,27 @@ export default function DashboardPage() {
             <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5 shadow-panel xl:col-span-1">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-white">Today</h3>
-                <Link href="/generate" className="text-sm text-zinc-400 transition hover:text-white">
-                  Open
-                </Link>
+                {todayPack ? (
+                  <Link
+                    href={`/generate?sceneId=${todayPack.sceneId}&mode=${todayPack.mode}`}
+                    className="text-sm text-zinc-400 transition hover:text-white"
+                  >
+                    Build now
+                  </Link>
+                ) : (
+                  <Link href="/generate" className="text-sm text-zinc-400 transition hover:text-white">
+                    Open
+                  </Link>
+                )}
               </div>
               <div className="mt-4 space-y-3 text-sm text-zinc-300">
+                {todayPack ? (
+                  <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.05] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-emerald-200/70">Recommended now</p>
+                    <p className="mt-2 font-medium text-white">{todayPack.sceneTitle}</p>
+                    <p className="mt-1 text-sm text-zinc-300">{todayPack.reason}</p>
+                  </div>
+                ) : null}
                 <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                   1. Generate one new scene
                 </div>

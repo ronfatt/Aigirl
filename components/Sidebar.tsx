@@ -6,12 +6,12 @@ import { Clapperboard, Images, LayoutDashboard, Settings, Sparkles, Users } from
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/character", label: "Character", icon: Users },
-  { href: "/generate", label: "Generate", icon: Sparkles },
-  { href: "/gallery", label: "Gallery", icon: Images },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/character", label: "Persona", icon: Users },
+  { href: "/generate", label: "Create", icon: Sparkles },
+  { href: "/gallery", label: "Library", icon: Images },
   { href: "/posts", label: "Exports", icon: Clapperboard },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings", label: "Setup", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -21,10 +21,8 @@ export function Sidebar() {
     <>
       <div className="sticky top-0 z-30 border-b border-white/10 bg-card/85 px-4 py-4 backdrop-blur xl:hidden">
         <div className="mb-4">
-          <p className="text-[11px] uppercase tracking-[0.32em] text-zinc-500">
-            AI Persona Studio
-          </p>
-          <h1 className="mt-2 text-lg font-semibold text-white">Creator Console</h1>
+          <p className="text-[11px] uppercase tracking-[0.32em] text-zinc-500">AI Persona Studio</p>
+          <h1 className="mt-2 text-lg font-semibold text-white">Studio</h1>
         </div>
         <nav className="flex gap-2 overflow-x-auto pb-1">
           {items.map((item) => {
@@ -53,10 +51,8 @@ export function Sidebar() {
       <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-border bg-card/80 p-6 backdrop-blur xl:block">
         <div className="mb-10">
           <p className="text-xs uppercase tracking-[0.32em] text-zinc-500">AI Persona Studio</p>
-          <h1 className="mt-3 text-2xl font-semibold text-white">Creator Console</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Build consistent image and clip-ready persona assets for manual Instagram posting.
-          </p>
+          <h1 className="mt-3 text-2xl font-semibold text-white">Studio</h1>
+          <p className="mt-2 text-sm text-zinc-400">Create stills, clips, and caption-ready assets.</p>
         </div>
 
         <nav className="space-y-2">
