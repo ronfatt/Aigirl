@@ -438,6 +438,23 @@ function shouldBootstrapAfterError(error: unknown) {
   return code === "42P01" || code === "42703";
 }
 
+function isMissingRelationError(error: unknown, relationName: string) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
+  const message =
+    "message" in error ? String((error as { message?: string }).message ?? "").toLowerCase() : "";
+
+  return (
+    code === "42P01" ||
+    message.includes("does not exist") ||
+    message.includes(`relation "${relationName.toLowerCase()}"`) ||
+    message.includes(relationName.toLowerCase())
+  );
+}
+
 async function withBootstrapOnMissingSchema<T>(query: () => Promise<T>) {
   try {
     return await query();
@@ -722,6 +739,9 @@ async function listVideoClipsFromDb() {
       .order("created_at", { ascending: false });
 
     if (error) {
+      if (isMissingRelationError(error, "video_clips")) {
+        return [];
+      }
       throw error;
     }
 
