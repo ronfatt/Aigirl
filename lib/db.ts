@@ -1661,6 +1661,7 @@ export async function createGeneration(input: GenerateImageInput) {
     mode,
     sensualPoseBias: sensualPoseBias ?? undefined,
     shotType,
+    imageCount: input.imageCount,
   });
   const imageUrls = await generatePersonaImages({
     prompt: finalPrompt,

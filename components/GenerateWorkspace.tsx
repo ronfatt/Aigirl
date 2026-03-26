@@ -238,6 +238,7 @@ export function GenerateWorkspace({
           customPrompt,
           mode,
           sensualPoseBias,
+          imageCount,
         })
       : "Select an active character to preview the prompt.";
   const referenceSlotCount = currentCharacter
@@ -649,6 +650,27 @@ export function GenerateWorkspace({
               ))}
             </div>
           </div>
+
+          {selectedPresetId === "flux-street-daylight" ? (
+            <div className="mt-5 rounded-2xl border border-sky-300/15 bg-sky-300/[0.05] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-sky-200">Flux target</p>
+                  <h4 className="mt-2 text-sm font-medium text-white">Street daylight carousel mode</h4>
+                  <p className="mt-2 max-w-2xl text-xs leading-5 text-zinc-300">
+                    This preset is tuned toward the `Flux.jpg` reference style: short dark street-style hair,
+                    white shirt, black mini skirt, daylight city framing, and a cleaner candid lookbook mood instead of
+                    indoor glamour portrait styling.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-right">
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Recommended setup</p>
+                  <p className="mt-2 text-sm text-white">Use `High` identity lock</p>
+                  <p className="mt-1 text-xs text-zinc-400">Best with a face reference that already matches the short-hair look.</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button

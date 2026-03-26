@@ -130,6 +130,18 @@ function getFluxStreetSceneBlock(scene: SceneTemplate) {
   ].join(", ");
 }
 
+function getFluxStreetReferenceBlock(character: Character) {
+  return [
+    "Reference priority: keep the same facial identity first",
+    character.faceReferenceImageUrl
+      ? "follow the face reference for eyes, jawline, nose, and overall recognizability"
+      : "keep the same face identity from the main persona reference",
+    "style direction should lean toward short dark street-style hair or a soft bob with light bangs",
+    "avoid drifting back into long glamorous indoor-hair styling",
+    "body shape should stay natural, slim, and understated rather than overtly glam",
+  ].join(", ");
+}
+
 function getSensualSceneAccent(scene: SceneTemplate) {
   switch (scene.id) {
     case "mirror-selfie":
@@ -391,6 +403,18 @@ function getFluxStreetCameraBlock(seed: string) {
     .join(", ");
 }
 
+function getFluxStreetSeriesBlock(imageCount: number) {
+  const sequence = [
+    "frame 1: a hero street frame with turn-back eye contact near a concrete wall",
+    "frame 2: a candid half-body or seated street-side frame with softer expression",
+    "frame 3: a cleaner near-face crop with wind movement and city blur",
+    "frame 4: a three-quarter or full-body walking frame showing the outfit and shoulder bag",
+    "frame 5: an alternate angle from the side or back to complete the carousel",
+  ];
+
+  return sequence.slice(0, Math.max(1, Math.min(imageCount, sequence.length))).join("; ");
+}
+
 export function composeImagePrompt(input: {
   character: Character;
   scene: SceneTemplate;
@@ -399,6 +423,7 @@ export function composeImagePrompt(input: {
   mode?: StyleMode;
   sensualPoseBias?: SensualPoseBias;
   shotType?: ShotType;
+  imageCount?: number;
 }) {
   const {
     character,
@@ -408,6 +433,7 @@ export function composeImagePrompt(input: {
     mode = "lifestyle",
     sensualPoseBias = "soft glam",
     shotType = "half-body",
+    imageCount = 1,
   } = input;
   const { lookMarker, cleanedPrompt } = extractLookMarker(customPrompt);
   const sceneBlock = mode === "sensual" ? getSensualSceneAccent(scene) : getSceneBlock(scene);
@@ -423,6 +449,7 @@ export function composeImagePrompt(input: {
       `Create a realistic Flux-style street photo of ${character.displayName}.`,
       "",
       `Identity: adult East Asian woman, keep the same face identity, ${character.appearanceDescription}.`,
+      `${getFluxStreetReferenceBlock(character)}.`,
       "Style: clean daylight street photo, soft film realism, candid editorial street snapshot, subtle Japanese/Korean fashion feel, natural skin texture, understated makeup, not studio glamour.",
       "Wardrobe: white button shirt, black pleated mini skirt, black shoulder bag, simple polished city styling.",
       `Scene: ${getFluxStreetSceneBlock(scene)}.`,
@@ -430,7 +457,7 @@ export function composeImagePrompt(input: {
       `Camera: ${getFluxStreetCameraBlock(variantSeed)}.`,
       "Color grade: low saturation daylight neutrals, soft city tones, gentle film softness, realistic contrast.",
       `Shot: ${getShotBlock(shotType)}.`,
-      "Series direction: this image should feel like one frame from a cohesive 4-image street photo set for Instagram carousel.",
+      `Series direction: create a cohesive ${imageCount}-image street carousel. ${getFluxStreetSeriesBlock(imageCount)}.`,
       `Consistency: ${consistencyBlock}.`,
       `Identity lock: ${getIdentityLockBlock(character)}.`,
       cleanedPrompt ? `Extra direction: ${cleanedPrompt}.` : null,
