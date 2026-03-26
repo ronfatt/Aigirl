@@ -5,16 +5,18 @@ import { cn } from "@/lib/utils";
 
 interface ImageGridProps {
   images: string[];
+  imageRoles?: string[];
   selectedImage?: string | null;
   onSelect?: (url: string) => void;
   onPreview?: (url: string) => void;
 }
 
-export function ImageGrid({ images, selectedImage, onSelect, onPreview }: ImageGridProps) {
+export function ImageGrid({ images, imageRoles, selectedImage, onSelect, onPreview }: ImageGridProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {images.map((image) => {
+      {images.map((image, index) => {
         const active = image === selectedImage;
+        const roleLabel = imageRoles?.[index];
 
         return (
           <div
@@ -26,6 +28,11 @@ export function ImageGrid({ images, selectedImage, onSelect, onPreview }: ImageG
           >
             <div className="relative h-80">
               <Image src={image} alt="Generated persona" fill className="object-cover" />
+              {roleLabel ? (
+                <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/55 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white">
+                  {roleLabel}
+                </div>
+              ) : null}
             </div>
             <div
               className={cn(

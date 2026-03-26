@@ -64,6 +64,7 @@ export interface Generation {
   sceneTemplateId: string;
   finalPrompt: string;
   imageUrls: string[];
+  imageRoles?: string[];
   selectedImageUrl: string | null;
   status: GenerationStatus;
   mode: StyleMode;

@@ -1741,6 +1741,20 @@ async function generateFluxCarouselSet(input: {
 }) {
   const plan = fluxCarouselFrames.slice(0, Math.max(1, Math.min(input.imageCount, fluxCarouselFrames.length)));
   const imageUrls: string[] = [];
+  const imageRoles = plan.map((frame) => {
+    switch (frame.shotType) {
+      case "three-quarter":
+        return "Hero";
+      case "half-body":
+        return "Half-body";
+      case "close":
+        return "Close";
+      case "full-body":
+        return "Walking / Back";
+      default:
+        return "Frame";
+    }
+  });
 
   for (const [index, frame] of plan.entries()) {
     const perFramePrompt = composeImagePrompt({
@@ -1766,6 +1780,7 @@ async function generateFluxCarouselSet(input: {
 
   return {
     imageUrls,
+    imageRoles,
     heroShotType: plan[0]?.shotType ?? "three-quarter",
     finalPrompt: composeImagePrompt({
       character: input.character,
@@ -1884,6 +1899,7 @@ export async function createGeneration(input: GenerateImageInput) {
       sceneTemplateId: scene.id,
       finalPrompt,
       imageUrls,
+      imageRoles: fluxCarousel?.imageRoles,
       selectedImageUrl: null,
       status: "completed",
       mode,
@@ -1922,6 +1938,10 @@ export async function createGeneration(input: GenerateImageInput) {
       customPrompt: input.customPrompt,
     }),
   });
+
+  if (fluxCarousel?.imageRoles) {
+    generation.imageRoles = fluxCarousel.imageRoles;
+  }
 
   return { generation };
 }

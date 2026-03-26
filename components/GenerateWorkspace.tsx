@@ -1163,6 +1163,7 @@ export function GenerateWorkspace({
           </div>
           <ImageGrid
             images={generation.imageUrls}
+            imageRoles={generation.imageRoles}
             selectedImage={selectedImage}
             onSelect={handleSelectImage}
             onPreview={setPreviewImageUrl}
