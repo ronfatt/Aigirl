@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import { deleteCharacter, updateCharacter } from "@/lib/db";
 import { CharacterInput } from "@/lib/types";
 
+function formatCharacterError(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const message =
+      "message" in error ? String((error as { message?: string }).message ?? "") : "";
+    const details =
+      "details" in error ? String((error as { details?: string }).details ?? "") : "";
+    const hint = "hint" in error ? String((error as { hint?: string }).hint ?? "") : "";
+
+    return [message, details, hint].filter(Boolean).join(" | ") || "Unable to update character.";
+  }
+
+  return typeof error === "string" ? error : "Unable to update character.";
+}
+
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -18,7 +36,7 @@ export async function PUT(
     return NextResponse.json({ character });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to update character." },
+      { error: formatCharacterError(error) },
       { status: 400 },
     );
   }
@@ -39,7 +57,7 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to delete character." },
+      { error: formatCharacterError(error).replace("update", "delete") },
       { status: 400 },
     );
   }

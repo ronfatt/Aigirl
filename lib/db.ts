@@ -948,10 +948,35 @@ export async function createCharacter(input: CharacterInput) {
         };
       });
 
-    if (error && isMissingColumnError(error, "look_profile")) {
-      const fallbackPayload = { ...payload };
-      delete (fallbackPayload as Record<string, unknown>).look_profile;
+    const compatibilityColumns = [
+      "face_reference_image_url",
+      "style_reference_image_url",
+      "body_reference_image_url",
+      "identity_lock_strength",
+      "look_profile",
+    ];
 
+    const shouldRetryCompat =
+      error &&
+      compatibilityColumns.some((column) => isMissingColumnError(error, column));
+
+    if (shouldRetryCompat) {
+      const fallbackPayload = {
+        id,
+        name: input.name,
+        display_name: input.displayName,
+        age_range: input.ageRange,
+        identity_style: input.identityStyle,
+        city: input.city,
+        bio: input.bio,
+        vibe: input.vibe,
+        appearance_description: input.appearanceDescription,
+        master_reference_image_url: input.masterReferenceImageUrl,
+        style_prompt: input.stylePrompt,
+        negative_prompt: input.negativePrompt,
+        posting_tone: input.postingTone,
+        is_active: input.isActive,
+      };
       const fallbackResponse = await withWriteTimeout("createCharacter.compat", async () => {
         const response = await supabase.from("characters").insert(fallbackPayload).select("*").single();
         return {
@@ -1114,9 +1139,35 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
         };
       });
 
-    if (error && isMissingColumnError(error, "look_profile")) {
-      const fallbackPayload = { ...payload };
-      delete (fallbackPayload as Record<string, unknown>).look_profile;
+    const compatibilityColumns = [
+      "face_reference_image_url",
+      "style_reference_image_url",
+      "body_reference_image_url",
+      "identity_lock_strength",
+      "look_profile",
+    ];
+
+    const shouldRetryCompat =
+      error &&
+      compatibilityColumns.some((column) => isMissingColumnError(error, column));
+
+    if (shouldRetryCompat) {
+      const fallbackPayload = {
+        name: next.name,
+        display_name: next.displayName,
+        age_range: next.ageRange,
+        identity_style: next.identityStyle,
+        city: next.city,
+        bio: next.bio,
+        vibe: next.vibe,
+        appearance_description: next.appearanceDescription,
+        master_reference_image_url: next.masterReferenceImageUrl,
+        style_prompt: next.stylePrompt,
+        negative_prompt: next.negativePrompt,
+        posting_tone: next.postingTone,
+        is_active: next.isActive,
+        updated_at: next.updatedAt,
+      };
 
       const fallbackResponse = await withWriteTimeout("updateCharacter.compat", async () => {
         const response = await supabase
