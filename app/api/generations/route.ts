@@ -4,6 +4,14 @@ import { buildIdentityReview, getCharacterReferenceSlotCount } from "@/lib/ident
 import { sceneLibrary } from "@/lib/scene-library";
 import { GenerationHistoryItem } from "@/lib/types";
 
+function inferImageRoles(lookProfile: string | undefined, imageCount: number) {
+  if (lookProfile !== "flux-street" || imageCount <= 1) {
+    return undefined;
+  }
+
+  return ["Hero", "Half-body", "Close", "Walking / Back"].slice(0, imageCount);
+}
+
 export async function GET() {
   try {
     const snapshot = await getDatabaseSnapshot();
@@ -15,6 +23,9 @@ export async function GET() {
 
       return {
         ...generation,
+        imageRoles:
+          generation.imageRoles ??
+          inferImageRoles(character?.lookProfile, generation.imageUrls.length),
         characterName: character?.displayName ?? "Unknown persona",
         sceneTitle: scene?.title ?? "Unknown scene",
         previewImageUrl: generation.selectedImageUrl ?? generation.imageUrls[0] ?? null,

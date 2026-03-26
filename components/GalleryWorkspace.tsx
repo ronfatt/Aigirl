@@ -401,6 +401,16 @@ export function GalleryWorkspace() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  {item.imageRoles?.length ? (
+                    item.imageRoles.map((role) => (
+                      <span
+                        key={role}
+                        className="rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-sky-100"
+                      >
+                        {role}
+                      </span>
+                    ))
+                  ) : null}
                   {item.qualityTags.map((tag) => (
                     <span
                       key={tag}

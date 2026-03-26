@@ -1443,7 +1443,7 @@ export function GenerateWorkspace({
 
                     {item.imageUrls.length ? (
                       <div className="grid grid-cols-4 gap-2 pt-2">
-                        {item.imageUrls.slice(0, 4).map((imageUrl) => (
+                        {item.imageUrls.slice(0, 4).map((imageUrl, index) => (
                           <button
                             key={imageUrl}
                             type="button"
@@ -1459,6 +1459,11 @@ export function GenerateWorkspace({
                               fill
                               className="object-cover"
                             />
+                            {item.imageRoles?.[index] ? (
+                              <span className="absolute left-1.5 top-1.5 rounded-full border border-white/15 bg-black/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white">
+                                {item.imageRoles[index]}
+                              </span>
+                            ) : null}
                           </button>
                         ))}
                       </div>
