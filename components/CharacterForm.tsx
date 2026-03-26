@@ -82,6 +82,23 @@ const defaultValues: CharacterInput = {
   isActive: true,
 };
 
+const fluxStreetStarter: Partial<CharacterInput> = {
+  identityStyle: "East Asian street-style creator",
+  city: "Tokyo",
+  bio: "Quiet city walks, soft daylight, street corners, coffee stops, and candid everyday frames.",
+  vibe:
+    "cool, understated, observant, quietly confident, natural, a little distant but memorable",
+  appearanceDescription:
+    "adult East Asian woman, short dark hair or soft short layered bob, light bangs, fair natural skin, slim natural figure, subtle feminine silhouette, realistic anatomy, understated beauty, clean jawline, calm expression",
+  stylePrompt:
+    "clean daylight street realism, subtle Japanese/Korean street editorial mood, candid social-media lookbook frame, soft film realism, slightly imperfect framing, natural daylight, gentle wind movement, understated styling, white shirt, black pleated mini skirt, black shoulder bag, realistic skin texture, no glamour polish",
+  negativePrompt:
+    "studio glamour, bodycon dress, indoor window portrait, long evening hair, plastic skin, over-retouched face, heavy makeup, perfect supermodel pose, fake hdr, cartoon, anime, exaggerated anatomy",
+  postingTone: "elegant minimal",
+  identityLockStrength: "high",
+  lookProfile: "flux-street",
+};
+
 interface CharacterFormProps {
   initialCharacter?: Character | null;
   onSaved?: (character: Character) => void;
@@ -97,6 +114,15 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
 
   function updateField<K extends keyof CharacterInput>(key: K, value: CharacterInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function applyFluxStarter() {
+    setForm((current) => ({
+      ...current,
+      ...fluxStreetStarter,
+    }));
+    setMessage("Flux starter applied. Add matching face/style/body references before saving.");
+    setError(null);
   }
 
   async function handleReferenceUpload(file: File) {
@@ -204,6 +230,26 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
       onSubmit={handleSubmit}
       className="space-y-5 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-6 shadow-panel"
     >
+      <div className="rounded-2xl border border-sky-300/15 bg-sky-300/[0.05] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-sky-200">Quick starter</p>
+            <h3 className="mt-2 text-sm font-medium text-white">Flux Street starter</h3>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-300">
+              Use this to shift the whole persona toward the `Flux.jpg` direction: daylight city street,
+              short dark hair, understated styling, candid street lookbook energy, and less indoor glamour drift.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={applyFluxStarter}
+            className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
+          >
+            Apply Flux starter
+          </button>
+        </div>
+      </div>
+
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="Name">
           <input
