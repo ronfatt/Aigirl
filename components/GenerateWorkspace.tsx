@@ -19,6 +19,7 @@ import {
   Character,
   Generation,
   GenerationHistoryItem,
+  LookProfile,
   QualityTag,
   SensualPoseBias,
   StyleMode,
@@ -33,6 +34,48 @@ interface GenerateWorkspaceProps {
   initialSceneId?: string | null;
   initialMode?: StyleMode | null;
 }
+
+const lookProfileSetups: Record<
+  LookProfile,
+  {
+    label: string;
+    description: string;
+    sceneIds: string[];
+    mode: StyleMode;
+    imageCount: number;
+    presetId?: string;
+  }
+> = {
+  signature: {
+    label: "Signature",
+    description: "Flexible profile. Let the scene drive the content.",
+    sceneIds: ["morning-coffee", "cafe-window", "weekend-brunch"],
+    mode: "lifestyle",
+    imageCount: 2,
+  },
+  "flux-street": {
+    label: "Flux Street",
+    description: "Daylight city street lookbook with cleaner candid editorial framing.",
+    sceneIds: ["city-shopping", "bookstore", "cafe-window", "rooftop-evening"],
+    mode: "lifestyle",
+    imageCount: 4,
+    presetId: "flux-street-daylight",
+  },
+  "soft-home": {
+    label: "Soft Home",
+    description: "Window light, home softness, and calmer domestic moments.",
+    sceneIds: ["morning-coffee", "reading-sofa", "rainy-window", "mirror-selfie"],
+    mode: "lifestyle",
+    imageCount: 3,
+  },
+  "night-city": {
+    label: "Night City",
+    description: "More polished city-night mood with evening light and urban background.",
+    sceneIds: ["rooftop-evening", "casual-dinner", "sunset-balcony", "city-shopping"],
+    mode: "sensual",
+    imageCount: 3,
+  },
+};
 
 export function GenerateWorkspace({
   initialCharacters,
@@ -218,7 +261,15 @@ export function GenerateWorkspace({
   const visiblePresets = promptPresets.filter(
     (preset) => !preset.modes || preset.modes.includes(mode),
   );
-  const quickScenes = sceneLibrary.slice(0, 6);
+  const activeLookSetup = currentCharacter ? lookProfileSetups[currentCharacter.lookProfile] : null;
+  const quickScenes = activeLookSetup
+    ? [
+        ...activeLookSetup.sceneIds
+          .map((id) => sceneLibrary.find((scene) => scene.id === id))
+          .filter((scene): scene is (typeof sceneLibrary)[number] => Boolean(scene)),
+        ...sceneLibrary,
+      ].filter((scene, index, array) => array.findIndex((item) => item.id === scene.id) === index).slice(0, 6)
+    : sceneLibrary.slice(0, 6);
   const contentMix = getContentMixSummary(history, mode, sensualSexyTarget);
   const sceneRatioHint = currentScene ? getSceneRatioHint(currentScene, mode, sensualSexyTarget) : null;
   const filteredHistory = history.filter((item) => {
@@ -277,6 +328,25 @@ export function GenerateWorkspace({
       setImageCount(preset.imageCount);
     }
     setCustomPrompt(preset.prompt);
+  }
+
+  function applyLookProfileSetup() {
+    if (!currentCharacter) {
+      return;
+    }
+
+    const setup = lookProfileSetups[currentCharacter.lookProfile];
+
+    setMode(setup.mode);
+    setImageCount(setup.imageCount);
+    setSceneId(setup.sceneIds[0] ?? sceneLibrary[0]?.id ?? "");
+
+    if (setup.presetId) {
+      applyPreset(setup.presetId);
+      return;
+    }
+
+    setSelectedPresetId("");
   }
 
   async function refreshHistory() {
@@ -633,6 +703,28 @@ export function GenerateWorkspace({
                 <p className="mt-1 text-xs text-zinc-400">The persona&apos;s default visual lane before scene-specific styling is applied.</p>
               </div>
               <LinkCard href="/character" title="Refine persona" description="Add more references or raise the identity lock." />
+            </div>
+          ) : null}
+
+          {currentCharacter && activeLookSetup ? (
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Look profile setup</p>
+                  <h4 className="mt-2 text-sm font-medium text-white">{activeLookSetup.label}</h4>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-400">{activeLookSetup.description}</p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Recommended scenes: {activeLookSetup.sceneIds.map((sceneId) => sceneLibrary.find((scene) => scene.id === sceneId)?.title ?? sceneId).join(", ")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={applyLookProfileSetup}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs text-white transition hover:bg-white/10"
+                >
+                  Apply profile setup
+                </button>
+              </div>
             </div>
           ) : null}
 
