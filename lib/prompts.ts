@@ -1,4 +1,5 @@
 import { Character, Platform, SceneTemplate, SensualPoseBias, ShotType, StyleMode } from "@/lib/types";
+import { getSceneVariantBlock } from "@/lib/scene-library";
 
 const styleBlocks: Record<StyleMode, string> = {
   lifestyle: [
@@ -134,17 +135,17 @@ function getLookProfileBlock(character: Character) {
   }
 }
 
-function getSceneBlock(scene: SceneTemplate) {
-  return `${scene.promptTemplate}, candid environmental context, understated editorial realism`;
+function getSceneBlock(scene: SceneTemplate, seed: string) {
+  return `${getSceneVariantBlock(scene, seed)}, candid environmental context, understated editorial realism`;
 }
 
-function getFluxStreetSceneBlock(scene: SceneTemplate) {
+function getFluxStreetSceneBlock(scene: SceneTemplate, seed: string) {
   return [
     "soft daylight city street",
     "concrete wall or sidewalk edge",
     "passing cars and gentle urban blur in background",
     "candid street fashion moment",
-    scene.promptTemplate,
+    getSceneVariantBlock(scene, `${seed}:flux-scene`),
   ].join(", ");
 }
 
@@ -152,13 +153,13 @@ function isFluxStreetScene(scene: SceneTemplate) {
   return ["city-shopping", "bookstore", "cafe-window", "rooftop-evening"].includes(scene.id);
 }
 
-function getFluxLookSceneBlock(scene: SceneTemplate) {
+function getFluxLookSceneBlock(scene: SceneTemplate, seed: string) {
   if (isFluxStreetScene(scene)) {
-    return getFluxStreetSceneBlock(scene);
+    return getFluxStreetSceneBlock(scene, seed);
   }
 
   return [
-    scene.promptTemplate,
+    getSceneVariantBlock(scene, `${seed}:flux-follow-scene`),
     "clean film realism",
     "candid lookbook energy",
     "understated editorial naturalism",
@@ -218,25 +219,34 @@ function getFluxStreetReferenceBlock(character: Character) {
 }
 
 function getSensualSceneAccent(scene: SceneTemplate) {
+  const variedScene = (seed: string) => getSceneVariantBlock(scene, `${seed}:sensual-scene`);
   switch (scene.id) {
     case "mirror-selfie":
-      return "mirror selfie in a softly lit bedroom with a fitted casual outfit";
+      return (seed: string) =>
+        `${variedScene(seed)}, mirror selfie in a softly lit bedroom with a fitted casual outfit`;
     case "hotel-morning":
-      return "sitting on a neatly styled bed in warm morning light with elegant lounge styling";
+      return (seed: string) =>
+        `${variedScene(seed)}, sitting on a neatly styled bed in warm morning light with elegant lounge styling`;
     case "sunset-balcony":
-      return "balcony sunset moment in a summer dress with warm evening glow";
+      return (seed: string) =>
+        `${variedScene(seed)}, balcony sunset moment in a summer dress with warm evening glow`;
     case "poolside":
-      return "poolside relaxing in refined swim cover styling with premium resort mood";
+      return (seed: string) =>
+        `${variedScene(seed)}, poolside relaxing in refined swim cover styling with premium resort mood`;
     case "beach-walk":
-      return "beach sunset walk with warm light, soft breeze, and confident summer energy";
+      return (seed: string) =>
+        `${variedScene(seed)}, beach sunset walk with warm light, soft breeze, and confident summer energy`;
     case "reading-sofa":
-      return "lounging on a sofa in a fitted casual outfit with soft window light";
+      return (seed: string) =>
+        `${variedScene(seed)}, lounging on a sofa in a fitted casual outfit with soft window light`;
     case "rainy-window":
-      return "leaning near a window with soft directional light and cinematic intimacy";
+      return (seed: string) =>
+        `${variedScene(seed)}, leaning near a window with soft directional light and cinematic intimacy`;
     case "rooftop-evening":
-      return "night city lights balcony photo with softly glamorous styling";
+      return (seed: string) =>
+        `${variedScene(seed)}, night city lights balcony photo with softly glamorous styling`;
     default:
-      return scene.promptTemplate;
+      return (seed: string) => getSceneVariantBlock(scene, `${seed}:sensual-default`);
   }
 }
 
@@ -511,7 +521,10 @@ export function composeImagePrompt(input: {
     imageCount = 1,
   } = input;
   const { lookMarker, cleanedPrompt } = extractLookMarker(customPrompt);
-  const sceneBlock = mode === "sensual" ? getSensualSceneAccent(scene) : getSceneBlock(scene);
+  const sceneBlock =
+    mode === "sensual"
+      ? getSensualSceneAccent(scene)(variantSeed)
+      : getSceneBlock(scene, variantSeed);
   const opener =
     mode === "sensual"
       ? `Create a realistic sensual lifestyle photo of ${character.displayName}.`
@@ -520,7 +533,7 @@ export function composeImagePrompt(input: {
         : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
 
   if (lookMarker === "flux-street-daylight") {
-    const fluxSceneBlock = getFluxLookSceneBlock(scene);
+    const fluxSceneBlock = getFluxLookSceneBlock(scene, variantSeed);
     const fluxWardrobeBlock = getFluxWardrobeBlock(scene);
     const fluxPoseBlock = isFluxStreetScene(scene)
       ? getFluxStreetPoseBlock(shotType, variantSeed)
