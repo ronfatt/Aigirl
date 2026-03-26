@@ -148,6 +148,43 @@ function getFluxStreetSceneBlock(scene: SceneTemplate) {
   ].join(", ");
 }
 
+function isFluxStreetScene(scene: SceneTemplate) {
+  return ["city-shopping", "bookstore", "cafe-window", "rooftop-evening"].includes(scene.id);
+}
+
+function getFluxLookSceneBlock(scene: SceneTemplate) {
+  if (isFluxStreetScene(scene)) {
+    return getFluxStreetSceneBlock(scene);
+  }
+
+  return [
+    scene.promptTemplate,
+    "clean film realism",
+    "candid lookbook energy",
+    "understated editorial naturalism",
+  ].join(", ");
+}
+
+function getFluxWardrobeBlock(scene: SceneTemplate) {
+  switch (scene.id) {
+    case "poolside":
+      return "Wardrobe: refined swimwear or understated resortwear, clean lines, polished but natural styling.";
+    case "beach-walk":
+      return "Wardrobe: understated summer styling, light layer or beachwear, natural movement, not glamour-resort excess.";
+    case "morning-coffee":
+    case "reading-sofa":
+    case "mirror-selfie":
+    case "rainy-window":
+    case "hotel-morning":
+      return "Wardrobe: understated homewear or relaxed lounge styling, soft textures, clean candid realism.";
+    case "sunset-balcony":
+    case "casual-dinner":
+      return "Wardrobe: simple polished evening styling, understated silhouette, not heavy glamour.";
+    default:
+      return "Wardrobe: white button shirt, black pleated mini skirt, black shoulder bag, simple polished city styling.";
+  }
+}
+
 function getColorGradeBlock(scene: SceneTemplate, mode: StyleMode) {
   if (scene.id === "rooftop-evening" || scene.id === "casual-dinner") {
     return "clean evening tones, city-light bokeh, realistic contrast, subtle cinematic night softness";
@@ -483,20 +520,29 @@ export function composeImagePrompt(input: {
         : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
 
   if (lookMarker === "flux-street-daylight") {
+    const fluxSceneBlock = getFluxLookSceneBlock(scene);
+    const fluxWardrobeBlock = getFluxWardrobeBlock(scene);
+    const fluxPoseBlock = isFluxStreetScene(scene)
+      ? getFluxStreetPoseBlock(shotType, variantSeed)
+      : getPoseBlock(scene, variantSeed, mode, sensualPoseBias);
+    const fluxCameraBlock = isFluxStreetScene(scene)
+      ? getFluxStreetCameraBlock(variantSeed)
+      : getCameraBlock(scene, variantSeed, mode);
+
     const blocks = [
-      `Create a realistic Flux-style street photo of ${character.displayName}.`,
+      `Create a realistic Flux-style lifestyle photo of ${character.displayName}.`,
       "",
       `Identity: adult East Asian woman, keep the same face identity, ${character.appearanceDescription}.`,
       `${getLookProfileBlock(character)}.`,
       `${getFluxStreetReferenceBlock(character)}.`,
-      "Style: clean daylight street photo, soft film realism, candid editorial street snapshot, subtle Japanese/Korean fashion feel, natural skin texture, understated makeup, not studio glamour.",
-      "Wardrobe: white button shirt, black pleated mini skirt, black shoulder bag, simple polished city styling.",
-      `Scene: ${getFluxStreetSceneBlock(scene)}.`,
-      `Pose: ${getFluxStreetPoseBlock(shotType, variantSeed)}.`,
-      `Camera: ${getFluxStreetCameraBlock(variantSeed)}.`,
-      "Color grade: low saturation daylight neutrals, soft city tones, gentle film softness, realistic contrast.",
+      "Style: clean daylight or natural-location photo, soft film realism, candid editorial lifestyle snapshot, subtle Japanese/Korean fashion feel, natural skin texture, understated makeup, not studio glamour.",
+      fluxWardrobeBlock,
+      `Scene: ${fluxSceneBlock}.`,
+      `Pose: ${fluxPoseBlock}.`,
+      `Camera: ${fluxCameraBlock}.`,
+      `Color grade: ${getColorGradeBlock(scene, mode)}.`,
       `Shot: ${getShotBlock(shotType)}.`,
-      `Series direction: create a cohesive ${imageCount}-image street carousel. ${getFluxStreetSeriesBlock(imageCount)}.`,
+      `Series direction: create a cohesive ${imageCount}-image lifestyle carousel. ${getFluxStreetSeriesBlock(imageCount)}.`,
       `Consistency: ${consistencyBlock}.`,
       `Identity lock: ${getIdentityLockBlock(character)}.`,
       cleanedPrompt ? `Extra direction: ${cleanedPrompt}.` : null,

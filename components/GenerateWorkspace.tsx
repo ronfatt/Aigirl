@@ -163,6 +163,15 @@ export function GenerateWorkspace({
   const [loadingCharacters, setLoadingCharacters] = useState(initialCharacters.length === 0);
   const [isPending, startTransition] = useTransition();
 
+  function updateSceneSelection(nextSceneId: string) {
+    setSceneId(nextSceneId);
+
+    if (selectedPresetId === "flux-street-daylight" && nextSceneId !== "city-shopping") {
+      setSelectedPresetId("");
+      setCustomPrompt("[look:flux-street-daylight]");
+    }
+  }
+
   useEffect(() => {
     if (initialSceneId && sceneLibrary.some((scene) => scene.id === initialSceneId)) {
       setSceneId(initialSceneId);
@@ -688,7 +697,7 @@ export function GenerateWorkspace({
             <Field label="Scene">
               <select
                 value={sceneId}
-                onChange={(event) => setSceneId(event.target.value)}
+                onChange={(event) => updateSceneSelection(event.target.value)}
                 className={inputClassName}
               >
                 {sceneLibrary.map((scene) => (
@@ -764,7 +773,7 @@ export function GenerateWorkspace({
                 <button
                   key={scene.id}
                   type="button"
-                  onClick={() => setSceneId(scene.id)}
+                  onClick={() => updateSceneSelection(scene.id)}
                   className={`rounded-full border px-3 py-1.5 text-xs transition ${
                     scene.id === sceneId
                       ? "border-white/30 bg-white/10 text-white"
@@ -908,7 +917,7 @@ export function GenerateWorkspace({
                       <button
                         key={scene.id}
                         type="button"
-                        onClick={() => setSceneId(scene.id)}
+                        onClick={() => updateSceneSelection(scene.id)}
                         className={`rounded-2xl border px-4 py-4 text-left transition ${
                           active
                             ? "border-rose-200/30 bg-rose-200/12"
@@ -1016,7 +1025,7 @@ export function GenerateWorkspace({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSceneId(contentMix.recommendedScene.id)}
+                    onClick={() => updateSceneSelection(contentMix.recommendedScene.id)}
                     className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs text-white transition hover:bg-white/10"
                   >
                     Use recommended scene: {contentMix.recommendedScene.title}
