@@ -266,6 +266,15 @@ export function GenerateWorkspace({
     }
 
     setSelectedPresetId(preset.id);
+    if (preset.mode) {
+      setMode(preset.mode);
+    }
+    if (preset.sceneId) {
+      setSceneId(preset.sceneId);
+    }
+    if (preset.imageCount) {
+      setImageCount(preset.imageCount);
+    }
     setCustomPrompt(preset.prompt);
   }
 

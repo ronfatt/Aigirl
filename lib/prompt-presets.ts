@@ -7,9 +7,24 @@ export interface PromptPreset {
   description: string;
   prompt: string;
   modes?: StyleMode[];
+  sceneId?: string;
+  mode?: StyleMode;
+  imageCount?: number;
 }
 
 export const promptPresets: PromptPreset[] = [
+  {
+    id: "flux-street-daylight",
+    title: "Flux Street Daylight",
+    category: "Flux",
+    description: "Daylight city street set with short hair, white shirt, black skirt, and candid lookbook energy.",
+    modes: ["lifestyle"],
+    mode: "lifestyle",
+    sceneId: "city-shopping",
+    imageCount: 4,
+    prompt:
+      "[look:flux-street-daylight] subtle Japanese/Korean street editorial mood, short dark bob or soft short layered hair with light bangs, white button shirt, black pleated mini skirt, black shoulder bag, candid daylight city street photo set, wind movement, clean film realism, not indoor glamour, not bodycon dress, not long evening-hair styling",
+  },
   {
     id: "tokyo-street",
     title: "Tokyo Street",

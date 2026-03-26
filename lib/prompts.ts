@@ -86,6 +86,23 @@ function pickVariant(seed: string, options: string[]) {
   return options[stableIndex(seed, options.length)] ?? options[0] ?? "";
 }
 
+function extractLookMarker(prompt?: string) {
+  if (!prompt) {
+    return { lookMarker: null, cleanedPrompt: "" };
+  }
+
+  const match = prompt.match(/^\[look:([^\]]+)\]\s*/);
+
+  if (!match) {
+    return { lookMarker: null, cleanedPrompt: prompt.trim() };
+  }
+
+  return {
+    lookMarker: match[1] ?? null,
+    cleanedPrompt: prompt.replace(/^\[look:[^\]]+\]\s*/, "").trim(),
+  };
+}
+
 function getIdentityBlock(character: Character) {
   return [
     `${character.displayName} is an adult ${character.identityStyle} woman living in ${character.city}.`,
@@ -101,6 +118,16 @@ function getIdentityBlock(character: Character) {
 
 function getSceneBlock(scene: SceneTemplate) {
   return scene.promptTemplate;
+}
+
+function getFluxStreetSceneBlock(scene: SceneTemplate) {
+  return [
+    "soft daylight city street",
+    "concrete wall or sidewalk edge",
+    "passing cars and gentle urban blur in background",
+    "candid street fashion moment",
+    scene.promptTemplate,
+  ].join(", ");
 }
 
 function getSensualSceneAccent(scene: SceneTemplate) {
@@ -311,6 +338,59 @@ function getShotBlock(shotType: ShotType) {
   }
 }
 
+function getFluxStreetPoseBlock(shotType: ShotType, seed: string) {
+  const byShot: Record<ShotType, string[]> = {
+    close: [
+      "closer face crop with wind-touched bangs and calm direct gaze",
+      "slight turn back toward camera with soft serious expression",
+      "casual daylight portrait from a street photo set",
+    ],
+    "half-body": [
+      "standing near a concrete wall, subtle turn back toward camera",
+      "bag visible on shoulder, relaxed posture, natural expression",
+      "caught between movement and pause, candid street snapshot",
+    ],
+    "three-quarter": [
+      "mid-step walking angle with skirt movement and natural body turn",
+      "hair moved by breeze, city street behind",
+      "street-style lookbook frame with clean daylight",
+    ],
+    "full-body": [
+      "full outfit visible while walking near curb or crosswalk",
+      "head turned slightly back toward camera",
+      "natural urban movement with candid fashion energy",
+    ],
+  };
+
+  const options = byShot[shotType] ?? byShot["half-body"];
+  return [
+    pickVariant(`${seed}:flux-pose-a`, options),
+    pickVariant(`${seed}:flux-pose-b`, options),
+    pickVariant(`${seed}:flux-pose-c`, options),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function getFluxStreetCameraBlock(seed: string) {
+  const options = [
+    "casual handheld street snapshot",
+    "clean daylight film realism",
+    "slightly imperfect framing",
+    "soft natural depth of field",
+    "social media lookbook photo",
+    "subtle editorial street framing",
+  ];
+
+  return [
+    pickVariant(`${seed}:flux-camera-a`, options),
+    pickVariant(`${seed}:flux-camera-b`, options),
+    pickVariant(`${seed}:flux-camera-c`, options),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function composeImagePrompt(input: {
   character: Character;
   scene: SceneTemplate;
@@ -329,6 +409,7 @@ export function composeImagePrompt(input: {
     sensualPoseBias = "soft glam",
     shotType = "half-body",
   } = input;
+  const { lookMarker, cleanedPrompt } = extractLookMarker(customPrompt);
   const sceneBlock = mode === "sensual" ? getSensualSceneAccent(scene) : getSceneBlock(scene);
   const opener =
     mode === "sensual"
@@ -336,6 +417,28 @@ export function composeImagePrompt(input: {
       : mode === "selfie"
         ? `Create a realistic instagram selfie photo of ${character.displayName}.`
         : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
+
+  if (lookMarker === "flux-street-daylight") {
+    const blocks = [
+      `Create a realistic Flux-style street photo of ${character.displayName}.`,
+      "",
+      `Identity: adult East Asian woman, keep the same face identity, ${character.appearanceDescription}.`,
+      "Style: clean daylight street photo, soft film realism, candid editorial street snapshot, subtle Japanese/Korean fashion feel, natural skin texture, understated makeup, not studio glamour.",
+      "Wardrobe: white button shirt, black pleated mini skirt, black shoulder bag, simple polished city styling.",
+      `Scene: ${getFluxStreetSceneBlock(scene)}.`,
+      `Pose: ${getFluxStreetPoseBlock(shotType, variantSeed)}.`,
+      `Camera: ${getFluxStreetCameraBlock(variantSeed)}.`,
+      "Color grade: low saturation daylight neutrals, soft city tones, gentle film softness, realistic contrast.",
+      `Shot: ${getShotBlock(shotType)}.`,
+      "Series direction: this image should feel like one frame from a cohesive 4-image street photo set for Instagram carousel.",
+      `Consistency: ${consistencyBlock}.`,
+      `Identity lock: ${getIdentityLockBlock(character)}.`,
+      cleanedPrompt ? `Extra direction: ${cleanedPrompt}.` : null,
+      "Negative: indoor glamour portrait, bodycon pink dress, long evening hair, over-smoothed skin, heavy retouching, perfect model pose, studio lighting, plastic skin.",
+    ];
+
+    return blocks.filter(Boolean).join("\n");
+  }
 
   if (mode === "sensual") {
     const simplifiedNegative = [
@@ -370,7 +473,7 @@ export function composeImagePrompt(input: {
       "",
       "Keep the same face identity.",
       `${getIdentityLockBlock(character)}.`,
-      customPrompt ? `Extra direction: ${customPrompt}.` : null,
+      cleanedPrompt ? `Extra direction: ${cleanedPrompt}.` : null,
       "",
       `Negative: ${simplifiedNegative}.`,
     ];
@@ -389,7 +492,7 @@ export function composeImagePrompt(input: {
     `Shot: ${getShotBlock(shotType)}.`,
     `Consistency: ${consistencyBlock}.`,
     `Identity lock: ${getIdentityLockBlock(character)}.`,
-    customPrompt ? `Extra direction: ${customPrompt}.` : null,
+    cleanedPrompt ? `Extra direction: ${cleanedPrompt}.` : null,
     `Negative: ${character.negativePrompt}, ${negativeBlock}.`,
   ];
 
