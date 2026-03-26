@@ -507,6 +507,7 @@ export function composeImagePrompt(input: {
   scene: SceneTemplate;
   customPrompt?: string;
   variantSeed?: string;
+  sceneVariantSeed?: string;
   sceneVariantOffset?: number;
   mode?: StyleMode;
   sensualPoseBias?: SensualPoseBias;
@@ -518,6 +519,7 @@ export function composeImagePrompt(input: {
     scene,
     customPrompt,
     variantSeed = `${character.id}:${scene.id}`,
+    sceneVariantSeed = variantSeed,
     sceneVariantOffset = 0,
     mode = "lifestyle",
     sensualPoseBias = "soft glam",
@@ -527,8 +529,8 @@ export function composeImagePrompt(input: {
   const { lookMarker, cleanedPrompt } = extractLookMarker(customPrompt);
   const sceneBlock =
     mode === "sensual"
-      ? getSensualSceneAccent(scene)(variantSeed, sceneVariantOffset)
-      : getSceneBlock(scene, variantSeed, sceneVariantOffset);
+      ? getSensualSceneAccent(scene)(sceneVariantSeed, sceneVariantOffset)
+      : getSceneBlock(scene, sceneVariantSeed, sceneVariantOffset);
   const opener =
     mode === "sensual"
       ? `Create a realistic sensual lifestyle photo of ${character.displayName}.`
@@ -537,7 +539,7 @@ export function composeImagePrompt(input: {
         : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
 
   if (lookMarker === "flux-street-daylight") {
-    const fluxSceneBlock = getFluxLookSceneBlock(scene, variantSeed, sceneVariantOffset);
+    const fluxSceneBlock = getFluxLookSceneBlock(scene, sceneVariantSeed, sceneVariantOffset);
     const fluxWardrobeBlock = getFluxWardrobeBlock(scene);
     const fluxPoseBlock = isFluxStreetScene(scene)
       ? getFluxStreetPoseBlock(shotType, variantSeed)

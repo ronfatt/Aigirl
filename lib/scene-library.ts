@@ -728,6 +728,20 @@ export function getSceneVariantBlock(scene: SceneTemplate, seed: string, variati
     .join(", ");
 }
 
+export function getSceneVariantSummary(scene: SceneTemplate, seed: string, variationOffset = 0) {
+  const config = sceneVariants[scene.id];
+
+  if (!config) {
+    return scene.title;
+  }
+
+  const anchor = pickVariant(`${seed}:anchor`, config.anchors, variationOffset);
+  const lighting = pickVariant(`${seed}:lighting`, config.lighting, variationOffset + 1);
+  const atmosphere = pickVariant(`${seed}:atmosphere`, config.atmosphere, variationOffset + 4);
+
+  return [anchor, lighting, atmosphere].filter(Boolean).join(" / ");
+}
+
 export function getSceneTemplateById(id: string) {
   return sceneLibrary.find((scene) => scene.id === id);
 }

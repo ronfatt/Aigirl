@@ -21,6 +21,7 @@ import {
   VideoClipStatus,
 } from "@/lib/types";
 import { sceneLibrary } from "@/lib/scene-library";
+import { getSceneVariantSummary } from "@/lib/scene-library";
 import { buildWeeklyPlan } from "@/lib/content-strategy";
 import { getIdentityRiskScore } from "@/lib/identity-review";
 import { composeImagePrompt } from "@/lib/prompts";
@@ -1751,6 +1752,7 @@ async function generateFluxCarouselSet(input: {
   customPrompt?: string;
   identityLockStrength?: IdentityLockStrength;
   sceneVariantOffset: number;
+  sceneVariantSeed: string;
 }) {
   const plan = fluxCarouselFrames.slice(0, Math.max(1, Math.min(input.imageCount, fluxCarouselFrames.length)));
   const imageUrls: string[] = [];
@@ -1775,6 +1777,7 @@ async function generateFluxCarouselSet(input: {
       scene: input.scene,
       customPrompt: [input.customPrompt?.trim(), frame.direction].filter(Boolean).join(" "),
       variantSeed: makeId(`variant-${index + 1}`),
+      sceneVariantSeed: input.sceneVariantSeed,
       sceneVariantOffset: input.sceneVariantOffset,
       mode: input.mode,
       sensualPoseBias: input.sensualPoseBias ?? undefined,
@@ -1806,6 +1809,7 @@ async function generateFluxCarouselSet(input: {
         .filter(Boolean)
         .join(" "),
       variantSeed: makeId("variant"),
+      sceneVariantSeed: input.sceneVariantSeed,
       sceneVariantOffset: input.sceneVariantOffset,
       mode: input.mode,
       sensualPoseBias: input.sensualPoseBias ?? undefined,
@@ -1873,6 +1877,8 @@ export async function createGeneration(input: GenerateImageInput) {
   const sensualPoseBias = mode === "sensual" ? input.sensualPoseBias ?? "soft glam" : null;
   const defaultShotType = chooseShotType(character.id, scene.id, generationHistory);
   const sceneVariantOffset = chooseSceneVariantOffset(character.id, scene.id, generationHistory);
+  const sceneVariantSeed = makeId("scene-variant");
+  const sceneVariantLabel = getSceneVariantSummary(scene, sceneVariantSeed, sceneVariantOffset);
 
   const fluxCarousel = shouldUseFluxCarousel(character, input)
     ? await generateFluxCarouselSet({
@@ -1884,6 +1890,7 @@ export async function createGeneration(input: GenerateImageInput) {
         customPrompt: input.customPrompt,
         identityLockStrength: input.identityLockStrength,
         sceneVariantOffset,
+        sceneVariantSeed,
       })
     : null;
 
@@ -1895,6 +1902,7 @@ export async function createGeneration(input: GenerateImageInput) {
       scene,
       customPrompt: input.customPrompt,
       variantSeed: makeId("variant"),
+      sceneVariantSeed,
       sceneVariantOffset,
       mode,
       sensualPoseBias: sensualPoseBias ?? undefined,
@@ -1918,6 +1926,7 @@ export async function createGeneration(input: GenerateImageInput) {
       finalPrompt,
       imageUrls,
       imageRoles: fluxCarousel?.imageRoles,
+      sceneVariantLabel,
       selectedImageUrl: null,
       status: "completed",
       mode,
@@ -1960,6 +1969,7 @@ export async function createGeneration(input: GenerateImageInput) {
   if (fluxCarousel?.imageRoles) {
     generation.imageRoles = fluxCarousel.imageRoles;
   }
+  generation.sceneVariantLabel = sceneVariantLabel;
 
   return { generation };
 }

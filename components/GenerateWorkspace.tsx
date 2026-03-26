@@ -1168,6 +1168,12 @@ export function GenerateWorkspace({
             onSelect={handleSelectImage}
             onPreview={setPreviewImageUrl}
           />
+          {generation.sceneVariantLabel ? (
+            <div className="mt-4 rounded-2xl border border-sky-300/15 bg-sky-300/[0.05] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-sky-200">Scene variant used</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-200">{generation.sceneVariantLabel}</p>
+            </div>
+          ) : null}
           <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
