@@ -141,6 +141,7 @@ export function GenerateWorkspace({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const [sceneAdjustmentHint, setSceneAdjustmentHint] = useState<string | null>(null);
   const [imageCount, setImageCount] = useState(2);
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -169,7 +170,15 @@ export function GenerateWorkspace({
     if (selectedPresetId === "flux-street-daylight" && nextSceneId !== "city-shopping") {
       setSelectedPresetId("");
       setCustomPrompt("[look:flux-street-daylight]");
+      const nextSceneTitle =
+        sceneLibrary.find((scene) => scene.id === nextSceneId)?.title ?? nextSceneId;
+      setSceneAdjustmentHint(
+        `Switched away from Flux Street preset. Keeping the Flux aesthetic, but letting ${nextSceneTitle} drive the new background and scene styling.`,
+      );
+      return;
     }
+
+    setSceneAdjustmentHint(null);
   }
 
   useEffect(() => {
@@ -207,6 +216,7 @@ export function GenerateWorkspace({
       if (preset) {
         setSelectedPresetId(preset.id);
         setCustomPrompt(preset.prompt);
+        setSceneAdjustmentHint(null);
       }
 
       return;
@@ -214,6 +224,7 @@ export function GenerateWorkspace({
 
     setSelectedPresetId("");
     setCustomPrompt("");
+    setSceneAdjustmentHint(null);
   }, [characterId, characters]);
 
   useEffect(() => {
@@ -355,6 +366,7 @@ export function GenerateWorkspace({
     }
 
     setSelectedPresetId(preset.id);
+    setSceneAdjustmentHint(null);
     if (preset.mode) {
       setMode(preset.mode);
     }
@@ -385,6 +397,7 @@ export function GenerateWorkspace({
 
     setSelectedPresetId("");
     setCustomPrompt("");
+    setSceneAdjustmentHint(null);
   }
 
   async function refreshHistory() {
@@ -807,6 +820,13 @@ export function GenerateWorkspace({
             </div>
           ) : null}
 
+          {sceneAdjustmentHint ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/[0.05] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Scene override</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-200">{sceneAdjustmentHint}</p>
+            </div>
+          ) : null}
+
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -1120,7 +1140,11 @@ export function GenerateWorkspace({
           <PromptPreview prompt={promptPreview} />
           <div>
             <h3 className="mb-4 text-lg font-semibold text-white">All scenes</h3>
-            <SceneSelector scenes={sceneLibrary} selectedSceneId={sceneId} onSelect={setSceneId} />
+            <SceneSelector
+              scenes={sceneLibrary}
+              selectedSceneId={sceneId}
+              onSelect={updateSceneSelection}
+            />
           </div>
         </div>
         ) : null}
