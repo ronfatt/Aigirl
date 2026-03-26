@@ -216,6 +216,12 @@ export function PostTable({ posts, characters, generations, videoClips }: PostTa
                 <p>Shot: {generation?.shotType ?? "Unknown"}</p>
               </div>
 
+              {generation?.sceneVariantLabel ? (
+                <p className="text-sm text-zinc-500">
+                  Variant: {generation.sceneVariantLabel}
+                </p>
+              ) : null}
+
               {generation?.qualityTags.length ? (
                 <div className="flex flex-wrap gap-2">
                   {generation.qualityTags.map((tag) => (

@@ -202,6 +202,9 @@ export default function AssetPackPage({
                   <p>Status: {data.post.status}</p>
                   <p>Updated: {formatDate(data.post.updatedAt)}</p>
                   <p>Shot type: {data.generation?.shotType ?? "Unknown"}</p>
+                  {data.generation?.sceneVariantLabel ? (
+                    <p>Scene variant: {data.generation.sceneVariantLabel}</p>
+                  ) : null}
                 </div>
               </div>
             </div>
