@@ -135,17 +135,17 @@ function getLookProfileBlock(character: Character) {
   }
 }
 
-function getSceneBlock(scene: SceneTemplate, seed: string) {
-  return `${getSceneVariantBlock(scene, seed)}, candid environmental context, understated editorial realism`;
+function getSceneBlock(scene: SceneTemplate, seed: string, sceneVariantOffset: number) {
+  return `${getSceneVariantBlock(scene, seed, sceneVariantOffset)}, candid environmental context, understated editorial realism`;
 }
 
-function getFluxStreetSceneBlock(scene: SceneTemplate, seed: string) {
+function getFluxStreetSceneBlock(scene: SceneTemplate, seed: string, sceneVariantOffset: number) {
   return [
     "soft daylight city street",
     "concrete wall or sidewalk edge",
     "passing cars and gentle urban blur in background",
     "candid street fashion moment",
-    getSceneVariantBlock(scene, `${seed}:flux-scene`),
+    getSceneVariantBlock(scene, `${seed}:flux-scene`, sceneVariantOffset),
   ].join(", ");
 }
 
@@ -153,13 +153,13 @@ function isFluxStreetScene(scene: SceneTemplate) {
   return ["city-shopping", "bookstore", "cafe-window", "rooftop-evening"].includes(scene.id);
 }
 
-function getFluxLookSceneBlock(scene: SceneTemplate, seed: string) {
+function getFluxLookSceneBlock(scene: SceneTemplate, seed: string, sceneVariantOffset: number) {
   if (isFluxStreetScene(scene)) {
-    return getFluxStreetSceneBlock(scene, seed);
+    return getFluxStreetSceneBlock(scene, seed, sceneVariantOffset);
   }
 
   return [
-    getSceneVariantBlock(scene, `${seed}:flux-follow-scene`),
+    getSceneVariantBlock(scene, `${seed}:flux-follow-scene`, sceneVariantOffset),
     "clean film realism",
     "candid lookbook energy",
     "understated editorial naturalism",
@@ -219,34 +219,36 @@ function getFluxStreetReferenceBlock(character: Character) {
 }
 
 function getSensualSceneAccent(scene: SceneTemplate) {
-  const variedScene = (seed: string) => getSceneVariantBlock(scene, `${seed}:sensual-scene`);
+  const variedScene = (seed: string, sceneVariantOffset: number) =>
+    getSceneVariantBlock(scene, `${seed}:sensual-scene`, sceneVariantOffset);
   switch (scene.id) {
     case "mirror-selfie":
-      return (seed: string) =>
-        `${variedScene(seed)}, mirror selfie in a softly lit bedroom with a fitted casual outfit`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, mirror selfie in a softly lit bedroom with a fitted casual outfit`;
     case "hotel-morning":
-      return (seed: string) =>
-        `${variedScene(seed)}, sitting on a neatly styled bed in warm morning light with elegant lounge styling`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, sitting on a neatly styled bed in warm morning light with elegant lounge styling`;
     case "sunset-balcony":
-      return (seed: string) =>
-        `${variedScene(seed)}, balcony sunset moment in a summer dress with warm evening glow`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, balcony sunset moment in a summer dress with warm evening glow`;
     case "poolside":
-      return (seed: string) =>
-        `${variedScene(seed)}, poolside relaxing in refined swim cover styling with premium resort mood`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, poolside relaxing in refined swim cover styling with premium resort mood`;
     case "beach-walk":
-      return (seed: string) =>
-        `${variedScene(seed)}, beach sunset walk with warm light, soft breeze, and confident summer energy`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, beach sunset walk with warm light, soft breeze, and confident summer energy`;
     case "reading-sofa":
-      return (seed: string) =>
-        `${variedScene(seed)}, lounging on a sofa in a fitted casual outfit with soft window light`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, lounging on a sofa in a fitted casual outfit with soft window light`;
     case "rainy-window":
-      return (seed: string) =>
-        `${variedScene(seed)}, leaning near a window with soft directional light and cinematic intimacy`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, leaning near a window with soft directional light and cinematic intimacy`;
     case "rooftop-evening":
-      return (seed: string) =>
-        `${variedScene(seed)}, night city lights balcony photo with softly glamorous styling`;
+      return (seed: string, sceneVariantOffset: number) =>
+        `${variedScene(seed, sceneVariantOffset)}, night city lights balcony photo with softly glamorous styling`;
     default:
-      return (seed: string) => getSceneVariantBlock(scene, `${seed}:sensual-default`);
+      return (seed: string, sceneVariantOffset: number) =>
+        getSceneVariantBlock(scene, `${seed}:sensual-default`, sceneVariantOffset);
   }
 }
 
@@ -505,6 +507,7 @@ export function composeImagePrompt(input: {
   scene: SceneTemplate;
   customPrompt?: string;
   variantSeed?: string;
+  sceneVariantOffset?: number;
   mode?: StyleMode;
   sensualPoseBias?: SensualPoseBias;
   shotType?: ShotType;
@@ -515,6 +518,7 @@ export function composeImagePrompt(input: {
     scene,
     customPrompt,
     variantSeed = `${character.id}:${scene.id}`,
+    sceneVariantOffset = 0,
     mode = "lifestyle",
     sensualPoseBias = "soft glam",
     shotType = "half-body",
@@ -523,8 +527,8 @@ export function composeImagePrompt(input: {
   const { lookMarker, cleanedPrompt } = extractLookMarker(customPrompt);
   const sceneBlock =
     mode === "sensual"
-      ? getSensualSceneAccent(scene)(variantSeed)
-      : getSceneBlock(scene, variantSeed);
+      ? getSensualSceneAccent(scene)(variantSeed, sceneVariantOffset)
+      : getSceneBlock(scene, variantSeed, sceneVariantOffset);
   const opener =
     mode === "sensual"
       ? `Create a realistic sensual lifestyle photo of ${character.displayName}.`
@@ -533,7 +537,7 @@ export function composeImagePrompt(input: {
         : `Create a realistic instagram lifestyle photo of ${character.displayName}.`;
 
   if (lookMarker === "flux-street-daylight") {
-    const fluxSceneBlock = getFluxLookSceneBlock(scene, variantSeed);
+    const fluxSceneBlock = getFluxLookSceneBlock(scene, variantSeed, sceneVariantOffset);
     const fluxWardrobeBlock = getFluxWardrobeBlock(scene);
     const fluxPoseBlock = isFluxStreetScene(scene)
       ? getFluxStreetPoseBlock(shotType, variantSeed)

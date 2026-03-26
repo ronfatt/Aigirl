@@ -1730,6 +1730,18 @@ function shouldUseFluxCarousel(character: Character, input: GenerateImageInput) 
   return character.lookProfile === "flux-street" && (input.imageCount ?? 1) > 1;
 }
 
+function chooseSceneVariantOffset(characterId: string, sceneTemplateId: string, history: Generation[]) {
+  const recentSameScene = history.filter(
+    (item) => item.characterId === characterId && item.sceneTemplateId === sceneTemplateId,
+  );
+
+  if (!recentSameScene.length) {
+    return 0;
+  }
+
+  return recentSameScene.slice(0, 3).length;
+}
+
 async function generateFluxCarouselSet(input: {
   character: Character;
   scene: SceneTemplate;
@@ -1738,6 +1750,7 @@ async function generateFluxCarouselSet(input: {
   imageCount: number;
   customPrompt?: string;
   identityLockStrength?: IdentityLockStrength;
+  sceneVariantOffset: number;
 }) {
   const plan = fluxCarouselFrames.slice(0, Math.max(1, Math.min(input.imageCount, fluxCarouselFrames.length)));
   const imageUrls: string[] = [];
@@ -1762,6 +1775,7 @@ async function generateFluxCarouselSet(input: {
       scene: input.scene,
       customPrompt: [input.customPrompt?.trim(), frame.direction].filter(Boolean).join(" "),
       variantSeed: makeId(`variant-${index + 1}`),
+      sceneVariantOffset: input.sceneVariantOffset,
       mode: input.mode,
       sensualPoseBias: input.sensualPoseBias ?? undefined,
       shotType: frame.shotType,
@@ -1792,6 +1806,7 @@ async function generateFluxCarouselSet(input: {
         .filter(Boolean)
         .join(" "),
       variantSeed: makeId("variant"),
+      sceneVariantOffset: input.sceneVariantOffset,
       mode: input.mode,
       sensualPoseBias: input.sensualPoseBias ?? undefined,
       shotType: plan[0]?.shotType ?? "three-quarter",
@@ -1857,6 +1872,7 @@ export async function createGeneration(input: GenerateImageInput) {
   const mode = input.mode ?? "lifestyle";
   const sensualPoseBias = mode === "sensual" ? input.sensualPoseBias ?? "soft glam" : null;
   const defaultShotType = chooseShotType(character.id, scene.id, generationHistory);
+  const sceneVariantOffset = chooseSceneVariantOffset(character.id, scene.id, generationHistory);
 
   const fluxCarousel = shouldUseFluxCarousel(character, input)
     ? await generateFluxCarouselSet({
@@ -1867,6 +1883,7 @@ export async function createGeneration(input: GenerateImageInput) {
         imageCount: input.imageCount,
         customPrompt: input.customPrompt,
         identityLockStrength: input.identityLockStrength,
+        sceneVariantOffset,
       })
     : null;
 
@@ -1878,6 +1895,7 @@ export async function createGeneration(input: GenerateImageInput) {
       scene,
       customPrompt: input.customPrompt,
       variantSeed: makeId("variant"),
+      sceneVariantOffset,
       mode,
       sensualPoseBias: sensualPoseBias ?? undefined,
       shotType,

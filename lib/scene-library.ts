@@ -700,11 +700,16 @@ function stableIndex(seed: string, optionsLength: number) {
   return optionsLength === 0 ? 0 : hash % optionsLength;
 }
 
-function pickVariant(seed: string, options: string[]) {
-  return options[stableIndex(seed, options.length)] ?? options[0] ?? "";
+function pickVariant(seed: string, options: string[], offset = 0) {
+  if (!options.length) {
+    return "";
+  }
+
+  const baseIndex = stableIndex(seed, options.length);
+  return options[(baseIndex + offset) % options.length] ?? options[0] ?? "";
 }
 
-export function getSceneVariantBlock(scene: SceneTemplate, seed: string) {
+export function getSceneVariantBlock(scene: SceneTemplate, seed: string, variationOffset = 0) {
   const config = sceneVariants[scene.id];
 
   if (!config) {
@@ -713,11 +718,11 @@ export function getSceneVariantBlock(scene: SceneTemplate, seed: string) {
 
   return [
     scene.promptTemplate,
-    pickVariant(`${seed}:anchor`, config.anchors),
-    pickVariant(`${seed}:lighting`, config.lighting),
-    pickVariant(`${seed}:props`, config.props),
-    pickVariant(`${seed}:framing`, config.framing),
-    pickVariant(`${seed}:atmosphere`, config.atmosphere),
+    pickVariant(`${seed}:anchor`, config.anchors, variationOffset),
+    pickVariant(`${seed}:lighting`, config.lighting, variationOffset + 1),
+    pickVariant(`${seed}:props`, config.props, variationOffset + 2),
+    pickVariant(`${seed}:framing`, config.framing, variationOffset + 3),
+    pickVariant(`${seed}:atmosphere`, config.atmosphere, variationOffset + 4),
   ]
     .filter(Boolean)
     .join(", ");
