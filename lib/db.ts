@@ -11,6 +11,7 @@ import {
   Post,
   PostStatus,
   QualityTag,
+  SceneTemplate,
   SensualPoseBias,
   ShotType,
   StyleMode,
@@ -1607,6 +1608,32 @@ async function insertGenerationRecord(input: {
 
 const shotRotation: ShotType[] = ["half-body", "three-quarter", "full-body", "close"];
 
+const fluxCarouselFrames: Array<{
+  shotType: ShotType;
+  direction: string;
+}> = [
+  {
+    shotType: "three-quarter",
+    direction:
+      "Frame role: hero image. Turn-back street frame near a wall or sidewalk edge, strongest city-lookbook image, direct recognisable face, clean daylight candid.",
+  },
+  {
+    shotType: "half-body",
+    direction:
+      "Frame role: half-body supporting frame. Cleaner torso-up street portrait, bag visible, softer expression, candid editorial street snapshot.",
+  },
+  {
+    shotType: "close",
+    direction:
+      "Frame role: close crop. Near-face daylight portrait with wind-touched hair or bangs, cleaner crop, stronger eye and face detail, natural film-like realism.",
+  },
+  {
+    shotType: "full-body",
+    direction:
+      "Frame role: walking or back-view frame. Full outfit visible, walking away or side/back angle, city blur in background, complete carousel variation.",
+  },
+];
+
 function chooseShotType(characterId: string, sceneTemplateId: string, history: Generation[]) {
   const recentForCharacter = history.filter((item) => item.characterId === characterId).slice(0, 6);
   const recentSameScene = recentForCharacter.filter((item) => item.sceneTemplateId === sceneTemplateId);
@@ -1646,6 +1673,65 @@ function getPromptStrengthForCharacter(character: Character, inputStrength?: Ide
   }
 
   return 0.82;
+}
+
+function shouldUseFluxCarousel(character: Character, input: GenerateImageInput) {
+  return character.lookProfile === "flux-street" && (input.imageCount ?? 1) > 1;
+}
+
+async function generateFluxCarouselSet(input: {
+  character: Character;
+  scene: SceneTemplate;
+  mode: StyleMode;
+  sensualPoseBias: SensualPoseBias | null;
+  imageCount: number;
+  customPrompt?: string;
+  identityLockStrength?: IdentityLockStrength;
+}) {
+  const plan = fluxCarouselFrames.slice(0, Math.max(1, Math.min(input.imageCount, fluxCarouselFrames.length)));
+  const imageUrls: string[] = [];
+
+  for (const [index, frame] of plan.entries()) {
+    const perFramePrompt = composeImagePrompt({
+      character: input.character,
+      scene: input.scene,
+      customPrompt: [input.customPrompt?.trim(), frame.direction].filter(Boolean).join(" "),
+      variantSeed: makeId(`variant-${index + 1}`),
+      mode: input.mode,
+      sensualPoseBias: input.sensualPoseBias ?? undefined,
+      shotType: frame.shotType,
+      imageCount: plan.length,
+    });
+
+    const urls = await generatePersonaImages({
+      prompt: perFramePrompt,
+      imageCount: 1,
+      referenceImageUrl: getReferenceImageUrl(input.character),
+      promptStrength: getPromptStrengthForCharacter(input.character, input.identityLockStrength),
+    });
+
+    imageUrls.push(...urls);
+  }
+
+  return {
+    imageUrls,
+    heroShotType: plan[0]?.shotType ?? "three-quarter",
+    finalPrompt: composeImagePrompt({
+      character: input.character,
+      scene: input.scene,
+      customPrompt: [
+        input.customPrompt?.trim(),
+        "Series structure: hero image, half-body support frame, close face crop, walking or back-view frame.",
+      ]
+        .filter(Boolean)
+        .join(" "),
+      variantSeed: makeId("variant"),
+      mode: input.mode,
+      sensualPoseBias: input.sensualPoseBias ?? undefined,
+      shotType: plan[0]?.shotType ?? "three-quarter",
+      imageCount: plan.length,
+    }),
+  };
 }
 
 function buildQualityTags(input: {
@@ -1704,24 +1790,41 @@ export async function createGeneration(input: GenerateImageInput) {
 
   const mode = input.mode ?? "lifestyle";
   const sensualPoseBias = mode === "sensual" ? input.sensualPoseBias ?? "soft glam" : null;
-  const shotType = chooseShotType(character.id, scene.id, generationHistory);
+  const defaultShotType = chooseShotType(character.id, scene.id, generationHistory);
 
-  const finalPrompt = composeImagePrompt({
-    character,
-    scene,
-    customPrompt: input.customPrompt,
-    variantSeed: makeId("variant"),
-    mode,
-    sensualPoseBias: sensualPoseBias ?? undefined,
-    shotType,
-    imageCount: input.imageCount,
-  });
-  const imageUrls = await generatePersonaImages({
-    prompt: finalPrompt,
-    imageCount: input.imageCount,
-    referenceImageUrl: getReferenceImageUrl(character),
-    promptStrength: getPromptStrengthForCharacter(character, input.identityLockStrength),
-  });
+  const fluxCarousel = shouldUseFluxCarousel(character, input)
+    ? await generateFluxCarouselSet({
+        character,
+        scene,
+        mode,
+        sensualPoseBias,
+        imageCount: input.imageCount,
+        customPrompt: input.customPrompt,
+        identityLockStrength: input.identityLockStrength,
+      })
+    : null;
+
+  const shotType = fluxCarousel?.heroShotType ?? defaultShotType;
+  const finalPrompt =
+    fluxCarousel?.finalPrompt ??
+    composeImagePrompt({
+      character,
+      scene,
+      customPrompt: input.customPrompt,
+      variantSeed: makeId("variant"),
+      mode,
+      sensualPoseBias: sensualPoseBias ?? undefined,
+      shotType,
+      imageCount: input.imageCount,
+    });
+  const imageUrls =
+    fluxCarousel?.imageUrls ??
+    (await generatePersonaImages({
+      prompt: finalPrompt,
+      imageCount: input.imageCount,
+      referenceImageUrl: getReferenceImageUrl(character),
+      promptStrength: getPromptStrengthForCharacter(character, input.identityLockStrength),
+    }));
 
   if (!hasDatabaseUrl) {
     const generation: Generation = {
