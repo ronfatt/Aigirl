@@ -1416,6 +1416,11 @@ export function GenerateWorkspace({
                           ) : null}
                         </div>
                         <p className="text-sm text-zinc-400">{item.sceneTitle}</p>
+                        {item.sceneVariantLabel ? (
+                          <p className="mt-1 text-xs text-zinc-500">
+                            Variant: {item.sceneVariantLabel}
+                          </p>
+                        ) : null}
                         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                           {item.mode} • {item.shotType}
                         </p>

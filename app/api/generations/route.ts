@@ -31,6 +31,7 @@ export async function GET() {
         previewImageUrl: generation.selectedImageUrl ?? generation.imageUrls[0] ?? null,
         linkedPostId: linkedPost?.id ?? null,
         linkedPostStatus: linkedPost?.status ?? null,
+        sceneVariantLabel: generation.sceneVariantLabel,
         identityLockStrength: character?.identityLockStrength ?? "balanced",
         referenceSlotCount: character ? getCharacterReferenceSlotCount(character) : 0,
         identityReview: character

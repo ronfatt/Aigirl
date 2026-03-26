@@ -86,6 +86,8 @@ type DbGenerationRow = {
   final_prompt?: string;
   imageUrls?: string[];
   image_urls?: string[];
+  sceneVariantLabel?: string | null;
+  scene_variant_label?: string | null;
   selectedImageUrl?: string | null;
   selected_image_url?: string | null;
   status: Generation["status"];
@@ -378,6 +380,7 @@ function mapGenerationRow(row: DbGenerationRow): Generation {
       : Array.isArray(row.image_urls)
         ? row.image_urls
         : [],
+    sceneVariantLabel: row.sceneVariantLabel ?? row.scene_variant_label ?? undefined,
     selectedImageUrl: row.selectedImageUrl ?? row.selected_image_url ?? null,
     status: row.status,
     mode: row.mode ?? "lifestyle",
@@ -596,6 +599,7 @@ async function ensureDatabaseReady() {
       await sql`alter table generations add column if not exists quality_tags jsonb not null default '[]'::jsonb`;
       await sql`alter table generations add column if not exists is_favorite boolean not null default false`;
       await sql`alter table generations add column if not exists is_archived boolean not null default false`;
+      await sql`alter table generations add column if not exists scene_variant_label text`;
 
       await sql`
         create table if not exists posts (
@@ -1530,6 +1534,7 @@ async function insertGenerationRecord(input: {
   sceneTemplateId: string;
   finalPrompt: string;
   imageUrls: string[];
+  sceneVariantLabel?: string;
   mode: StyleMode;
   sensualPoseBias: SensualPoseBias | null;
   shotType: ShotType;
@@ -1544,6 +1549,7 @@ async function insertGenerationRecord(input: {
       scene_template_id: input.sceneTemplateId,
       final_prompt: input.finalPrompt,
       image_urls: input.imageUrls,
+      scene_variant_label: input.sceneVariantLabel ?? null,
       selected_image_url: null,
       status: "completed",
       mode: input.mode,
@@ -1571,6 +1577,7 @@ async function insertGenerationRecord(input: {
       "quality_tags",
       "is_favorite",
       "is_archived",
+      "scene_variant_label",
     ];
 
     const shouldRetryCompat = compatibilityColumns.some((column) =>
@@ -1613,6 +1620,7 @@ async function insertGenerationRecord(input: {
       scene_template_id,
       final_prompt,
       image_urls,
+      scene_variant_label,
       selected_image_url,
       status
       ,
@@ -1628,6 +1636,7 @@ async function insertGenerationRecord(input: {
       ${input.sceneTemplateId},
       ${input.finalPrompt},
       ${sql.json(input.imageUrls)},
+      ${input.sceneVariantLabel ?? null},
       ${null},
       ${"completed"}
       ,
@@ -1644,6 +1653,7 @@ async function insertGenerationRecord(input: {
       scene_template_id,
       final_prompt as "finalPrompt",
       image_urls,
+      scene_variant_label as "sceneVariantLabel",
       selected_image_url,
       status,
       mode,
@@ -1954,6 +1964,7 @@ export async function createGeneration(input: GenerateImageInput) {
     sceneTemplateId: scene.id,
     finalPrompt,
     imageUrls,
+    sceneVariantLabel,
     mode,
     sensualPoseBias,
     shotType,
