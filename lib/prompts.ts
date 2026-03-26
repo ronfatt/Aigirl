@@ -44,6 +44,18 @@ const styleBlocks: Record<StyleMode, string> = {
 const consistencyBlock =
   "maintain the same facial identity across images, same person, same face, same hairline, same eye shape";
 
+function getIdentityLockBlock(character: Character) {
+  if (character.identityLockStrength === "max") {
+    return "prioritize identity consistency strongly, keep the same face, same facial proportions, same hairline, and same overall look before adding scene variation";
+  }
+
+  if (character.identityLockStrength === "high") {
+    return "keep the same face and overall identity strongly while still allowing moderate scene and pose variation";
+  }
+
+  return "keep the same face identity while still allowing healthy scene, camera, and pose variation";
+}
+
 const negativeBlock = [
   "cartoon",
   "anime",
@@ -79,6 +91,9 @@ function getIdentityBlock(character: Character) {
     `${character.displayName} is an adult ${character.identityStyle} woman living in ${character.city}.`,
     character.appearanceDescription,
     character.vibe,
+    character.faceReferenceImageUrl ? "keep the same face identity as the face reference" : "",
+    character.styleReferenceImageUrl ? "keep the same hair, styling mood, and beauty direction as the style reference" : "",
+    character.bodyReferenceImageUrl ? "keep a similar body shape, silhouette, and posture feel from the body reference" : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -354,6 +369,7 @@ export function composeImagePrompt(input: {
       `Shot: ${getShotBlock(shotType)}.`,
       "",
       "Keep the same face identity.",
+      `${getIdentityLockBlock(character)}.`,
       customPrompt ? `Extra direction: ${customPrompt}.` : null,
       "",
       `Negative: ${simplifiedNegative}.`,
@@ -372,6 +388,7 @@ export function composeImagePrompt(input: {
     `Camera: ${getCameraBlock(scene, variantSeed, mode)}.`,
     `Shot: ${getShotBlock(shotType)}.`,
     `Consistency: ${consistencyBlock}.`,
+    `Identity lock: ${getIdentityLockBlock(character)}.`,
     customPrompt ? `Extra direction: ${customPrompt}.` : null,
     `Negative: ${character.negativePrompt}, ${negativeBlock}.`,
   ];

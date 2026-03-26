@@ -2,7 +2,7 @@
 
 import type { FormEvent, ReactNode } from "react";
 import { useRef, useState, useTransition } from "react";
-import { Character, CharacterInput, PostingTone } from "@/lib/types";
+import { Character, CharacterInput, IdentityLockStrength, PostingTone } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const postingTones: PostingTone[] = [
@@ -10,6 +10,28 @@ const postingTones: PostingTone[] = [
   "casual intimate",
   "playful",
   "elegant minimal",
+];
+
+const identityLockOptions: Array<{
+  value: IdentityLockStrength;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "balanced",
+    label: "Balanced",
+    description: "Keeps the same person, but still allows more scene and pose variety.",
+  },
+  {
+    value: "high",
+    label: "High",
+    description: "More face consistency with less drift across generations.",
+  },
+  {
+    value: "max",
+    label: "Max",
+    description: "Strongest identity lock when you want the face to stay very close.",
+  },
 ];
 
 const defaultValues: CharacterInput = {
@@ -22,9 +44,13 @@ const defaultValues: CharacterInput = {
   vibe: "",
   appearanceDescription: "",
   masterReferenceImageUrl: "",
+  faceReferenceImageUrl: "",
+  styleReferenceImageUrl: "",
+  bodyReferenceImageUrl: "",
   stylePrompt: "",
   negativePrompt: "",
   postingTone: "soft lifestyle",
+  identityLockStrength: "balanced",
   isActive: true,
 };
 
@@ -119,9 +145,13 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
             vibe: payload.character.vibe,
             appearanceDescription: payload.character.appearanceDescription,
             masterReferenceImageUrl: payload.character.masterReferenceImageUrl,
+            faceReferenceImageUrl: payload.character.faceReferenceImageUrl,
+            styleReferenceImageUrl: payload.character.styleReferenceImageUrl,
+            bodyReferenceImageUrl: payload.character.bodyReferenceImageUrl,
             stylePrompt: payload.character.stylePrompt,
             negativePrompt: payload.character.negativePrompt,
             postingTone: payload.character.postingTone,
+            identityLockStrength: payload.character.identityLockStrength,
             isActive: payload.character.isActive,
           });
           onSaved?.(payload.character);
@@ -263,6 +293,52 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
               Upload one portrait or lifestyle reference image to store it in Supabase Storage.
             </p>
           </div>
+        </div>
+      </Field>
+      <div className="grid gap-5 md:grid-cols-3">
+        <Field label="Face reference URL">
+          <input
+            value={form.faceReferenceImageUrl}
+            onChange={(event) => updateField("faceReferenceImageUrl", event.target.value)}
+            className={inputClassName}
+            placeholder="Optional. Best close face reference."
+          />
+        </Field>
+        <Field label="Style reference URL">
+          <input
+            value={form.styleReferenceImageUrl}
+            onChange={(event) => updateField("styleReferenceImageUrl", event.target.value)}
+            className={inputClassName}
+            placeholder="Optional. Hair, styling, mood."
+          />
+        </Field>
+        <Field label="Body reference URL">
+          <input
+            value={form.bodyReferenceImageUrl}
+            onChange={(event) => updateField("bodyReferenceImageUrl", event.target.value)}
+            className={inputClassName}
+            placeholder="Optional. Body shape and posture."
+          />
+        </Field>
+      </div>
+      <Field label="Identity lock">
+        <div className="grid gap-3 md:grid-cols-3">
+          {identityLockOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => updateField("identityLockStrength", option.value)}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition",
+                form.identityLockStrength === option.value
+                  ? "border-white/25 bg-white/10 text-white"
+                  : "border-white/10 bg-black/10 text-zinc-300 hover:bg-white/[0.05]",
+              )}
+            >
+              <p className="text-sm font-medium">{option.label}</p>
+              <p className="mt-1 text-xs text-zinc-400">{option.description}</p>
+            </button>
+          ))}
         </div>
       </Field>
       <Field label="Style prompt">

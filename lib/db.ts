@@ -14,6 +14,7 @@ import {
   SensualPoseBias,
   ShotType,
   StyleMode,
+  IdentityLockStrength,
   VideoClipDraft,
   VideoClipStatus,
 } from "@/lib/types";
@@ -48,12 +49,20 @@ type DbCharacterRow = {
   appearance_description?: string;
   masterReferenceImageUrl?: string;
   master_reference_image_url?: string;
+  faceReferenceImageUrl?: string;
+  face_reference_image_url?: string;
+  styleReferenceImageUrl?: string;
+  style_reference_image_url?: string;
+  bodyReferenceImageUrl?: string;
+  body_reference_image_url?: string;
   stylePrompt?: string;
   style_prompt?: string;
   negativePrompt?: string;
   negative_prompt?: string;
   postingTone?: string;
   posting_tone?: string;
+  identityLockStrength?: IdentityLockStrength;
+  identity_lock_strength?: IdentityLockStrength;
   is_active: boolean;
   createdAt?: string | Date;
   created_at?: string | Date;
@@ -181,11 +190,16 @@ function createSeedState(): DatabaseState {
           "natural brunette waves, expressive eyes, sun-kissed skin, refined casual styling",
         masterReferenceImageUrl:
           "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80",
+        faceReferenceImageUrl:
+          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80",
+        styleReferenceImageUrl: "",
+        bodyReferenceImageUrl: "",
         stylePrompt:
           "editorial natural light, premium lifestyle photography, realistic skin texture, subtle depth of field",
         negativePrompt:
           "explicit nudity, extra limbs, warped face, low-resolution, heavy retouching, unsafe content",
         postingTone: "soft lifestyle",
+        identityLockStrength: "balanced",
         isActive: true,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -314,6 +328,9 @@ function getSupabaseDbClient() {
 }
 
 function mapCharacterRow(row: DbCharacterRow): Character {
+  const masterReferenceImageUrl =
+    row.masterReferenceImageUrl ?? row.master_reference_image_url ?? "";
+
   return {
     id: row.id,
     name: row.name,
@@ -324,11 +341,18 @@ function mapCharacterRow(row: DbCharacterRow): Character {
     bio: row.bio,
     vibe: row.vibe,
     appearanceDescription: row.appearanceDescription ?? row.appearance_description ?? "",
-    masterReferenceImageUrl:
-      row.masterReferenceImageUrl ?? row.master_reference_image_url ?? "",
+    masterReferenceImageUrl,
+    faceReferenceImageUrl:
+      row.faceReferenceImageUrl ?? row.face_reference_image_url ?? masterReferenceImageUrl,
+    styleReferenceImageUrl:
+      row.styleReferenceImageUrl ?? row.style_reference_image_url ?? "",
+    bodyReferenceImageUrl:
+      row.bodyReferenceImageUrl ?? row.body_reference_image_url ?? "",
     stylePrompt: row.stylePrompt ?? row.style_prompt ?? "",
     negativePrompt: row.negativePrompt ?? row.negative_prompt ?? "",
     postingTone: (row.postingTone ?? row.posting_tone ?? "soft lifestyle") as Character["postingTone"],
+    identityLockStrength:
+      (row.identityLockStrength ?? row.identity_lock_strength ?? "balanced") as IdentityLockStrength,
     isActive: row.is_active,
     createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
     updatedAt: normalizeDate(row.updatedAt ?? row.updated_at)!,
@@ -516,17 +540,26 @@ async function ensureDatabaseReady() {
           identity_style text not null,
           city text not null,
           bio text not null,
-          vibe text not null,
-          appearance_description text not null,
-          master_reference_image_url text not null,
-          style_prompt text not null,
-          negative_prompt text not null,
-          posting_tone text not null,
-          is_active boolean not null default true,
-          created_at timestamptz not null default now(),
-          updated_at timestamptz not null default now()
-        )
-      `;
+        vibe text not null,
+        appearance_description text not null,
+        master_reference_image_url text not null,
+        face_reference_image_url text not null default '',
+        style_reference_image_url text not null default '',
+        body_reference_image_url text not null default '',
+        style_prompt text not null,
+        negative_prompt text not null,
+        posting_tone text not null,
+        identity_lock_strength text not null default 'balanced',
+        is_active boolean not null default true,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      )
+    `;
+
+      await sql`alter table characters add column if not exists face_reference_image_url text not null default ''`;
+      await sql`alter table characters add column if not exists style_reference_image_url text not null default ''`;
+      await sql`alter table characters add column if not exists body_reference_image_url text not null default ''`;
+      await sql`alter table characters add column if not exists identity_lock_strength text not null default 'balanced'`;
 
       await sql`
         create table if not exists generations (
@@ -653,9 +686,13 @@ async function listCharactersFromDb() {
         vibe,
         appearance_description as "appearanceDescription",
         master_reference_image_url as "masterReferenceImageUrl",
+        face_reference_image_url as "faceReferenceImageUrl",
+        style_reference_image_url as "styleReferenceImageUrl",
+        body_reference_image_url as "bodyReferenceImageUrl",
         style_prompt as "stylePrompt",
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
+        identity_lock_strength as "identityLockStrength",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -694,9 +731,13 @@ async function getCharacterFromDb(id: string) {
         vibe,
         appearance_description as "appearanceDescription",
         master_reference_image_url as "masterReferenceImageUrl",
+        face_reference_image_url as "faceReferenceImageUrl",
+        style_reference_image_url as "styleReferenceImageUrl",
+        body_reference_image_url as "bodyReferenceImageUrl",
         style_prompt as "stylePrompt",
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
+        identity_lock_strength as "identityLockStrength",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -876,9 +917,13 @@ export async function createCharacter(input: CharacterInput) {
       vibe: input.vibe,
       appearance_description: input.appearanceDescription,
       master_reference_image_url: input.masterReferenceImageUrl,
+      face_reference_image_url: input.faceReferenceImageUrl,
+      style_reference_image_url: input.styleReferenceImageUrl,
+      body_reference_image_url: input.bodyReferenceImageUrl,
       style_prompt: input.stylePrompt,
       negative_prompt: input.negativePrompt,
       posting_tone: input.postingTone,
+      identity_lock_strength: input.identityLockStrength,
       is_active: input.isActive,
     };
 
@@ -915,9 +960,13 @@ export async function createCharacter(input: CharacterInput) {
         vibe,
         appearance_description,
         master_reference_image_url,
+        face_reference_image_url,
+        style_reference_image_url,
+        body_reference_image_url,
         style_prompt,
         negative_prompt,
         posting_tone,
+        identity_lock_strength,
         is_active
       ) values (
         ${id},
@@ -930,9 +979,13 @@ export async function createCharacter(input: CharacterInput) {
         ${input.vibe},
         ${input.appearanceDescription},
         ${input.masterReferenceImageUrl},
+        ${input.faceReferenceImageUrl},
+        ${input.styleReferenceImageUrl},
+        ${input.bodyReferenceImageUrl},
         ${input.stylePrompt},
         ${input.negativePrompt},
         ${input.postingTone},
+        ${input.identityLockStrength},
         ${input.isActive}
       )
       returning
@@ -946,9 +999,13 @@ export async function createCharacter(input: CharacterInput) {
         vibe,
         appearance_description as "appearanceDescription",
         master_reference_image_url as "masterReferenceImageUrl",
+        face_reference_image_url as "faceReferenceImageUrl",
+        style_reference_image_url as "styleReferenceImageUrl",
+        body_reference_image_url as "bodyReferenceImageUrl",
         style_prompt as "stylePrompt",
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
+        identity_lock_strength as "identityLockStrength",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -1000,9 +1057,13 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
       vibe: next.vibe,
       appearance_description: next.appearanceDescription,
       master_reference_image_url: next.masterReferenceImageUrl,
+      face_reference_image_url: next.faceReferenceImageUrl,
+      style_reference_image_url: next.styleReferenceImageUrl,
+      body_reference_image_url: next.bodyReferenceImageUrl,
       style_prompt: next.stylePrompt,
       negative_prompt: next.negativePrompt,
       posting_tone: next.postingTone,
+      identity_lock_strength: next.identityLockStrength,
       is_active: next.isActive,
       updated_at: next.updatedAt,
     };
@@ -1043,9 +1104,13 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
         vibe = ${next.vibe},
         appearance_description = ${next.appearanceDescription},
         master_reference_image_url = ${next.masterReferenceImageUrl},
+        face_reference_image_url = ${next.faceReferenceImageUrl},
+        style_reference_image_url = ${next.styleReferenceImageUrl},
+        body_reference_image_url = ${next.bodyReferenceImageUrl},
         style_prompt = ${next.stylePrompt},
         negative_prompt = ${next.negativePrompt},
         posting_tone = ${next.postingTone},
+        identity_lock_strength = ${next.identityLockStrength},
         is_active = ${next.isActive},
         updated_at = ${next.updatedAt}
       where id = ${id}
@@ -1060,9 +1125,13 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
         vibe,
         appearance_description as "appearanceDescription",
         master_reference_image_url as "masterReferenceImageUrl",
+        face_reference_image_url as "faceReferenceImageUrl",
+        style_reference_image_url as "styleReferenceImageUrl",
+        body_reference_image_url as "bodyReferenceImageUrl",
         style_prompt as "stylePrompt",
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
+        identity_lock_strength as "identityLockStrength",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -1501,16 +1570,60 @@ function chooseShotType(characterId: string, sceneTemplateId: string, history: G
   return candidate ?? shotRotation[(recentForCharacter.length + recentSameScene.length) % shotRotation.length];
 }
 
+function getReferenceImageUrl(character: Character) {
+  return (
+    character.faceReferenceImageUrl ||
+    character.masterReferenceImageUrl ||
+    character.styleReferenceImageUrl ||
+    character.bodyReferenceImageUrl ||
+    undefined
+  );
+}
+
+function getPromptStrengthForCharacter(character: Character, inputStrength?: IdentityLockStrength) {
+  const strength = inputStrength ?? character.identityLockStrength;
+
+  if (strength === "max") {
+    return 0.45;
+  }
+
+  if (strength === "high") {
+    return 0.62;
+  }
+
+  return 0.82;
+}
+
+function getReferenceSlotCount(character: Character) {
+  return [
+    character.masterReferenceImageUrl,
+    character.faceReferenceImageUrl,
+    character.styleReferenceImageUrl,
+    character.bodyReferenceImageUrl,
+  ].filter(Boolean).length;
+}
+
 function buildQualityTags(input: {
+  character: Character;
   sceneTemplateId: string;
   mode: StyleMode;
   shotType: ShotType;
   selectedImageUrl?: string | null;
 }): QualityTag[] {
   const tags: QualityTag[] = ["face stable", "background clear"];
+  const referenceSlotCount = getReferenceSlotCount(input.character);
+  const identityLock = input.character.identityLockStrength;
 
   if (input.shotType !== "close") {
     tags.push("framing good");
+  }
+
+  if (
+    identityLock === "balanced" &&
+    referenceSlotCount <= 1 &&
+    (input.mode === "sensual" || input.shotType === "close")
+  ) {
+    tags.push("off-identity risk");
   }
 
   if (
@@ -1555,7 +1668,8 @@ export async function createGeneration(input: GenerateImageInput) {
   const imageUrls = await generatePersonaImages({
     prompt: finalPrompt,
     imageCount: input.imageCount,
-    referenceImageUrl: character.masterReferenceImageUrl,
+    referenceImageUrl: getReferenceImageUrl(character),
+    promptStrength: getPromptStrengthForCharacter(character, input.identityLockStrength),
   });
 
   if (!hasDatabaseUrl) {
@@ -1571,6 +1685,7 @@ export async function createGeneration(input: GenerateImageInput) {
       sensualPoseBias,
       shotType,
       qualityTags: buildQualityTags({
+        character,
         sceneTemplateId: scene.id,
         mode,
         shotType,
@@ -1594,6 +1709,7 @@ export async function createGeneration(input: GenerateImageInput) {
     sensualPoseBias,
     shotType,
     qualityTags: buildQualityTags({
+      character,
       sceneTemplateId: scene.id,
       mode,
       shotType,

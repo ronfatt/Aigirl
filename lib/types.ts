@@ -7,6 +7,7 @@ export type SensualPoseBias = "soft glam" | "playful" | "confident";
 export type ShotType = "close" | "half-body" | "three-quarter" | "full-body";
 export type QualityTag =
   | "face stable"
+  | "off-identity risk"
   | "framing good"
   | "background clear"
   | "publish-ready";
@@ -15,6 +16,7 @@ export type PostingTone =
   | "casual intimate"
   | "playful"
   | "elegant minimal";
+export type IdentityLockStrength = "balanced" | "high" | "max";
 
 export interface Character {
   id: string;
@@ -27,9 +29,13 @@ export interface Character {
   vibe: string;
   appearanceDescription: string;
   masterReferenceImageUrl: string;
+  faceReferenceImageUrl: string;
+  styleReferenceImageUrl: string;
+  bodyReferenceImageUrl: string;
   stylePrompt: string;
   negativePrompt: string;
   postingTone: PostingTone;
+  identityLockStrength: IdentityLockStrength;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -115,9 +121,13 @@ export interface CharacterInput {
   vibe: string;
   appearanceDescription: string;
   masterReferenceImageUrl: string;
+  faceReferenceImageUrl: string;
+  styleReferenceImageUrl: string;
+  bodyReferenceImageUrl: string;
   stylePrompt: string;
   negativePrompt: string;
   postingTone: PostingTone;
+  identityLockStrength: IdentityLockStrength;
   isActive: boolean;
 }
 
@@ -128,6 +138,7 @@ export interface GenerateImageInput {
   imageCount: number;
   mode?: StyleMode;
   sensualPoseBias?: SensualPoseBias;
+  identityLockStrength?: IdentityLockStrength;
 }
 
 export interface WeeklyPlanItem {

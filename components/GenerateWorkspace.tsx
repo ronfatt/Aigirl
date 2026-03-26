@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
 import { ImageGrid } from "@/components/ImageGrid";
@@ -238,6 +239,14 @@ export function GenerateWorkspace({
           sensualPoseBias,
         })
       : "Select an active character to preview the prompt.";
+  const referenceSlotCount = currentCharacter
+    ? [
+        currentCharacter.masterReferenceImageUrl,
+        currentCharacter.faceReferenceImageUrl,
+        currentCharacter.styleReferenceImageUrl,
+        currentCharacter.bodyReferenceImageUrl,
+      ].filter(Boolean).length
+    : 0;
 
   function applyPreset(presetId: string) {
     const preset = promptPresets.find((item) => item.id === presetId);
@@ -412,6 +421,7 @@ export function GenerateWorkspace({
             imageCount,
             mode,
             sensualPoseBias,
+            identityLockStrength: currentCharacter?.identityLockStrength,
           }),
         });
 
@@ -584,6 +594,22 @@ export function GenerateWorkspace({
               </select>
             </Field>
           </div>
+
+          {currentCharacter ? (
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Identity lock</p>
+                <p className="mt-2 text-sm font-medium text-white">{currentCharacter.identityLockStrength}</p>
+                <p className="mt-1 text-xs text-zinc-400">Higher lock keeps the same face more aggressively.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Reference slots</p>
+                <p className="mt-2 text-sm font-medium text-white">{referenceSlotCount}</p>
+                <p className="mt-1 text-xs text-zinc-400">Face, style, and body references all support consistency.</p>
+              </div>
+              <LinkCard href="/character" title="Refine persona" description="Add more references or raise the identity lock." />
+            </div>
+          ) : null}
 
           <div className="mt-5">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Quick scenes</p>
@@ -955,7 +981,7 @@ export function GenerateWorkspace({
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {(["face stable", "framing good", "background clear", "publish-ready"] as QualityTag[]).map((tag) => {
+              {(["face stable", "off-identity risk", "framing good", "background clear", "publish-ready"] as QualityTag[]).map((tag) => {
                 const active = generation.qualityTags.includes(tag);
 
                 return (
@@ -1295,6 +1321,27 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-zinc-400">{label}</span>
       {children}
     </label>
+  );
+}
+
+function LinkCard({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl border border-white/10 bg-black/10 p-4 transition hover:bg-white/[0.05]"
+    >
+      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Shortcut</p>
+      <p className="mt-2 text-sm font-medium text-white">{title}</p>
+      <p className="mt-1 text-xs text-zinc-400">{description}</p>
+    </Link>
   );
 }
 

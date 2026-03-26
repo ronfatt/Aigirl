@@ -36,6 +36,15 @@ export function CharacterCard({ character }: { character: Character }) {
           <p>
             <span className="text-zinc-500">Tone:</span> {character.postingTone}
           </p>
+          <p>
+            <span className="text-zinc-500">Identity lock:</span> {character.identityLockStrength}
+          </p>
+          <p>
+            <span className="text-zinc-500">Reference slots:</span>{" "}
+            {[character.faceReferenceImageUrl, character.styleReferenceImageUrl, character.bodyReferenceImageUrl]
+              .filter(Boolean)
+              .length || 1}
+          </p>
         </div>
       </div>
     </div>

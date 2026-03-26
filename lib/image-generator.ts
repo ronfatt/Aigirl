@@ -23,6 +23,7 @@ export async function generateImages(input: {
   finalPrompt: string;
   count: number;
   referenceImageUrl?: string;
+  promptStrength?: number;
 }) {
   const count = Math.min(Math.max(input.count, 1), 4);
   const allowMockFallback = !process.env.REPLICATE_API_TOKEN;
@@ -39,6 +40,7 @@ export async function generateImages(input: {
       finalPrompt: input.finalPrompt,
       referenceImageUrl: input.referenceImageUrl,
       count,
+      promptStrength: input.promptStrength,
     });
 
     return Promise.all(
@@ -64,10 +66,12 @@ export async function generatePersonaImages(input: {
   prompt: string;
   imageCount: number;
   referenceImageUrl?: string;
+  promptStrength?: number;
 }) {
   return generateImages({
     finalPrompt: input.prompt,
     count: input.imageCount,
     referenceImageUrl: input.referenceImageUrl,
+    promptStrength: input.promptStrength,
   });
 }

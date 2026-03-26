@@ -111,8 +111,11 @@ export async function generateReplicateImages(input: {
   finalPrompt: string;
   referenceImageUrl?: string;
   count: number;
+  promptStrength?: number;
 }) {
-  const configuredPromptStrength = Number(process.env.REPLICATE_PROMPT_STRENGTH || DEFAULT_PROMPT_STRENGTH);
+  const configuredPromptStrength = Number(
+    input.promptStrength ?? process.env.REPLICATE_PROMPT_STRENGTH ?? DEFAULT_PROMPT_STRENGTH,
+  );
   const promptStrength = Number.isFinite(configuredPromptStrength)
     ? Math.min(Math.max(configuredPromptStrength, 0.1), 1)
     : DEFAULT_PROMPT_STRENGTH;
