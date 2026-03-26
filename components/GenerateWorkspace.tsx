@@ -180,6 +180,34 @@ export function GenerateWorkspace({
   }, [initialCharacters]);
 
   useEffect(() => {
+    const character = characters.find((item) => item.id === characterId);
+
+    if (!character) {
+      return;
+    }
+
+    const setup = lookProfileSetups[character.lookProfile];
+
+    setMode(setup.mode);
+    setImageCount(setup.imageCount);
+    setSceneId(setup.sceneIds[0] ?? sceneLibrary[0]?.id ?? "");
+
+    if (setup.presetId) {
+      const preset = promptPresets.find((item) => item.id === setup.presetId);
+
+      if (preset) {
+        setSelectedPresetId(preset.id);
+        setCustomPrompt(preset.prompt);
+      }
+
+      return;
+    }
+
+    setSelectedPresetId("");
+    setCustomPrompt("");
+  }, [characterId, characters]);
+
+  useEffect(() => {
     if (initialCharacters.length && initialHistory.length) {
       return;
     }
@@ -347,6 +375,7 @@ export function GenerateWorkspace({
     }
 
     setSelectedPresetId("");
+    setCustomPrompt("");
   }
 
   async function refreshHistory() {
