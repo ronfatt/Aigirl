@@ -15,6 +15,7 @@ import {
   ShotType,
   StyleMode,
   IdentityLockStrength,
+  LookProfile,
   VideoClipDraft,
   VideoClipStatus,
 } from "@/lib/types";
@@ -64,6 +65,8 @@ type DbCharacterRow = {
   posting_tone?: string;
   identityLockStrength?: IdentityLockStrength;
   identity_lock_strength?: IdentityLockStrength;
+  lookProfile?: LookProfile;
+  look_profile?: LookProfile;
   is_active: boolean;
   createdAt?: string | Date;
   created_at?: string | Date;
@@ -201,6 +204,7 @@ function createSeedState(): DatabaseState {
           "explicit nudity, extra limbs, warped face, low-resolution, heavy retouching, unsafe content",
         postingTone: "soft lifestyle",
         identityLockStrength: "balanced",
+        lookProfile: "signature",
         isActive: true,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -354,6 +358,7 @@ function mapCharacterRow(row: DbCharacterRow): Character {
     postingTone: (row.postingTone ?? row.posting_tone ?? "soft lifestyle") as Character["postingTone"],
     identityLockStrength:
       (row.identityLockStrength ?? row.identity_lock_strength ?? "balanced") as IdentityLockStrength,
+    lookProfile: (row.lookProfile ?? row.look_profile ?? "signature") as LookProfile,
     isActive: row.is_active,
     createdAt: normalizeDate(row.createdAt ?? row.created_at)!,
     updatedAt: normalizeDate(row.updatedAt ?? row.updated_at)!,
@@ -551,6 +556,7 @@ async function ensureDatabaseReady() {
         negative_prompt text not null,
         posting_tone text not null,
         identity_lock_strength text not null default 'balanced',
+        look_profile text not null default 'signature',
         is_active boolean not null default true,
         created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()
@@ -561,6 +567,7 @@ async function ensureDatabaseReady() {
       await sql`alter table characters add column if not exists style_reference_image_url text not null default ''`;
       await sql`alter table characters add column if not exists body_reference_image_url text not null default ''`;
       await sql`alter table characters add column if not exists identity_lock_strength text not null default 'balanced'`;
+      await sql`alter table characters add column if not exists look_profile text not null default 'signature'`;
 
       await sql`
         create table if not exists generations (
@@ -694,6 +701,7 @@ async function listCharactersFromDb() {
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
         identity_lock_strength as "identityLockStrength",
+        look_profile as "lookProfile",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -739,6 +747,7 @@ async function getCharacterFromDb(id: string) {
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
         identity_lock_strength as "identityLockStrength",
+        look_profile as "lookProfile",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -925,10 +934,11 @@ export async function createCharacter(input: CharacterInput) {
       negative_prompt: input.negativePrompt,
       posting_tone: input.postingTone,
       identity_lock_strength: input.identityLockStrength,
+      look_profile: input.lookProfile,
       is_active: input.isActive,
     };
 
-    const { data, error }: { data: DbCharacterRow | null; error: Error | null } =
+    let { data, error }: { data: DbCharacterRow | null; error: Error | null } =
       await withWriteTimeout("createCharacter", async () => {
         const response = await supabase.from("characters").insert(payload).select("*").single();
         return {
@@ -936,6 +946,22 @@ export async function createCharacter(input: CharacterInput) {
           error: (response.error as Error | null) ?? null,
         };
       });
+
+    if (error && isMissingColumnError(error, "look_profile")) {
+      const fallbackPayload = { ...payload };
+      delete (fallbackPayload as Record<string, unknown>).look_profile;
+
+      const fallbackResponse = await withWriteTimeout("createCharacter.compat", async () => {
+        const response = await supabase.from("characters").insert(fallbackPayload).select("*").single();
+        return {
+          data: (response.data as DbCharacterRow | null) ?? null,
+          error: (response.error as Error | null) ?? null,
+        };
+      });
+
+      data = fallbackResponse.data;
+      error = fallbackResponse.error;
+    }
 
     if (error) {
       throw error;
@@ -968,6 +994,7 @@ export async function createCharacter(input: CharacterInput) {
         negative_prompt,
         posting_tone,
         identity_lock_strength,
+        look_profile,
         is_active
       ) values (
         ${id},
@@ -987,6 +1014,7 @@ export async function createCharacter(input: CharacterInput) {
         ${input.negativePrompt},
         ${input.postingTone},
         ${input.identityLockStrength},
+        ${input.lookProfile},
         ${input.isActive}
       )
       returning
@@ -1007,6 +1035,7 @@ export async function createCharacter(input: CharacterInput) {
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
         identity_lock_strength as "identityLockStrength",
+        look_profile as "lookProfile",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"
@@ -1065,11 +1094,12 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
       negative_prompt: next.negativePrompt,
       posting_tone: next.postingTone,
       identity_lock_strength: next.identityLockStrength,
+      look_profile: next.lookProfile,
       is_active: next.isActive,
       updated_at: next.updatedAt,
     };
 
-    const { data, error }: { data: DbCharacterRow | null; error: Error | null } =
+    let { data, error }: { data: DbCharacterRow | null; error: Error | null } =
       await withWriteTimeout("updateCharacter", async () => {
         const response = await supabase
           .from("characters")
@@ -1082,6 +1112,27 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
           error: (response.error as Error | null) ?? null,
         };
       });
+
+    if (error && isMissingColumnError(error, "look_profile")) {
+      const fallbackPayload = { ...payload };
+      delete (fallbackPayload as Record<string, unknown>).look_profile;
+
+      const fallbackResponse = await withWriteTimeout("updateCharacter.compat", async () => {
+        const response = await supabase
+          .from("characters")
+          .update(fallbackPayload)
+          .eq("id", id)
+          .select("*")
+          .single();
+        return {
+          data: (response.data as DbCharacterRow | null) ?? null,
+          error: (response.error as Error | null) ?? null,
+        };
+      });
+
+      data = fallbackResponse.data;
+      error = fallbackResponse.error;
+    }
 
     if (error) {
       throw error;
@@ -1112,6 +1163,7 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
         negative_prompt = ${next.negativePrompt},
         posting_tone = ${next.postingTone},
         identity_lock_strength = ${next.identityLockStrength},
+        look_profile = ${next.lookProfile},
         is_active = ${next.isActive},
         updated_at = ${next.updatedAt}
       where id = ${id}
@@ -1133,6 +1185,7 @@ export async function updateCharacter(id: string, input: Partial<CharacterInput>
         negative_prompt as "negativePrompt",
         posting_tone as "postingTone",
         identity_lock_strength as "identityLockStrength",
+        look_profile as "lookProfile",
         is_active,
         created_at as "createdAt",
         updated_at as "updatedAt"

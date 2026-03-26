@@ -116,6 +116,19 @@ function getIdentityBlock(character: Character) {
     .join(", ");
 }
 
+function getLookProfileBlock(character: Character) {
+  switch (character.lookProfile) {
+    case "flux-street":
+      return "default visual lane: daylight city street fashion, cleaner editorial candid energy, short dark street-style hair direction, understated film realism";
+    case "soft-home":
+      return "default visual lane: indoor natural light, soft home styling, calm candid domestic moments, warm neutral tones";
+    case "night-city":
+      return "default visual lane: urban evening glow, darker polished styling, neon blur, cinematic city-night atmosphere";
+    default:
+      return "default visual lane: stay flexible and let the scene define the styling";
+  }
+}
+
 function getSceneBlock(scene: SceneTemplate) {
   return scene.promptTemplate;
 }
@@ -449,6 +462,7 @@ export function composeImagePrompt(input: {
       `Create a realistic Flux-style street photo of ${character.displayName}.`,
       "",
       `Identity: adult East Asian woman, keep the same face identity, ${character.appearanceDescription}.`,
+      `${getLookProfileBlock(character)}.`,
       `${getFluxStreetReferenceBlock(character)}.`,
       "Style: clean daylight street photo, soft film realism, candid editorial street snapshot, subtle Japanese/Korean fashion feel, natural skin texture, understated makeup, not studio glamour.",
       "Wardrobe: white button shirt, black pleated mini skirt, black shoulder bag, simple polished city styling.",
@@ -490,6 +504,8 @@ export function composeImagePrompt(input: {
       "",
       `Pose: ${getPoseBlock(scene, variantSeed, mode, sensualPoseBias)}.`,
       "",
+      `Look profile: ${getLookProfileBlock(character)}.`,
+      "",
       "Lighting:",
       "soft morning sunlight.",
       "",
@@ -512,6 +528,7 @@ export function composeImagePrompt(input: {
     opener,
     "",
     `Identity: ${getIdentityBlock(character)}.`,
+    `Look profile: ${getLookProfileBlock(character)}.`,
     `Style: ${styleBlocks[mode]}.`,
     `Scene: ${sceneBlock}.`,
     `Pose: ${getPoseBlock(scene, variantSeed, mode, sensualPoseBias)}.`,

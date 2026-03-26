@@ -17,6 +17,11 @@ export type PostingTone =
   | "playful"
   | "elegant minimal";
 export type IdentityLockStrength = "balanced" | "high" | "max";
+export type LookProfile =
+  | "signature"
+  | "flux-street"
+  | "soft-home"
+  | "night-city";
 export type IdentityReviewLevel = "stable" | "review" | "high-risk";
 
 export interface Character {
@@ -37,6 +42,7 @@ export interface Character {
   negativePrompt: string;
   postingTone: PostingTone;
   identityLockStrength: IdentityLockStrength;
+  lookProfile: LookProfile;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -139,6 +145,7 @@ export interface CharacterInput {
   negativePrompt: string;
   postingTone: PostingTone;
   identityLockStrength: IdentityLockStrength;
+  lookProfile: LookProfile;
   isActive: boolean;
 }
 

@@ -40,6 +40,9 @@ export function CharacterCard({ character }: { character: Character }) {
             <span className="text-zinc-500">Identity lock:</span> {character.identityLockStrength}
           </p>
           <p>
+            <span className="text-zinc-500">Look profile:</span> {character.lookProfile}
+          </p>
+          <p>
             <span className="text-zinc-500">Reference slots:</span>{" "}
             {[character.faceReferenceImageUrl, character.styleReferenceImageUrl, character.bodyReferenceImageUrl]
               .filter(Boolean)

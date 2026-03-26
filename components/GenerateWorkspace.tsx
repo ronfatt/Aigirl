@@ -627,6 +627,11 @@ export function GenerateWorkspace({
                 <p className="mt-2 text-sm font-medium text-white">{referenceSlotCount}</p>
                 <p className="mt-1 text-xs text-zinc-400">Face, style, and body references all support consistency.</p>
               </div>
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Look profile</p>
+                <p className="mt-2 text-sm font-medium text-white">{currentCharacter.lookProfile}</p>
+                <p className="mt-1 text-xs text-zinc-400">The persona&apos;s default visual lane before scene-specific styling is applied.</p>
+              </div>
               <LinkCard href="/character" title="Refine persona" description="Add more references or raise the identity lock." />
             </div>
           ) : null}

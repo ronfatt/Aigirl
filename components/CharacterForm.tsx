@@ -2,7 +2,7 @@
 
 import type { FormEvent, ReactNode } from "react";
 import { useRef, useState, useTransition } from "react";
-import { Character, CharacterInput, IdentityLockStrength, PostingTone } from "@/lib/types";
+import { Character, CharacterInput, IdentityLockStrength, LookProfile, PostingTone } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const postingTones: PostingTone[] = [
@@ -34,6 +34,33 @@ const identityLockOptions: Array<{
   },
 ];
 
+const lookProfileOptions: Array<{
+  value: LookProfile;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "signature",
+    label: "Signature",
+    description: "Keeps the persona flexible and lets scenes drive most of the styling.",
+  },
+  {
+    value: "flux-street",
+    label: "Flux Street",
+    description: "Daylight city street look with candid editorial framing and cleaner streetwear energy.",
+  },
+  {
+    value: "soft-home",
+    label: "Soft Home",
+    description: "Indoor natural light, softer lounge styling, and more intimate everyday moments.",
+  },
+  {
+    value: "night-city",
+    label: "Night City",
+    description: "Urban evening mood, neon blur, and a darker polished city-girl aesthetic.",
+  },
+];
+
 const defaultValues: CharacterInput = {
   name: "",
   displayName: "",
@@ -51,6 +78,7 @@ const defaultValues: CharacterInput = {
   negativePrompt: "",
   postingTone: "soft lifestyle",
   identityLockStrength: "balanced",
+  lookProfile: "signature",
   isActive: true,
 };
 
@@ -152,6 +180,7 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
             negativePrompt: payload.character.negativePrompt,
             postingTone: payload.character.postingTone,
             identityLockStrength: payload.character.identityLockStrength,
+            lookProfile: payload.character.lookProfile,
             isActive: payload.character.isActive,
           });
           onSaved?.(payload.character);
@@ -331,6 +360,26 @@ export function CharacterForm({ initialCharacter, onSaved }: CharacterFormProps)
               className={cn(
                 "rounded-2xl border p-4 text-left transition",
                 form.identityLockStrength === option.value
+                  ? "border-white/25 bg-white/10 text-white"
+                  : "border-white/10 bg-black/10 text-zinc-300 hover:bg-white/[0.05]",
+              )}
+            >
+              <p className="text-sm font-medium">{option.label}</p>
+              <p className="mt-1 text-xs text-zinc-400">{option.description}</p>
+            </button>
+          ))}
+        </div>
+      </Field>
+      <Field label="Look profile">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {lookProfileOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => updateField("lookProfile", option.value)}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition",
+                form.lookProfile === option.value
                   ? "border-white/25 bg-white/10 text-white"
                   : "border-white/10 bg-black/10 text-zinc-300 hover:bg-white/[0.05]",
               )}
