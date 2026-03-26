@@ -2,28 +2,31 @@ import { Character, Platform, SceneTemplate, SensualPoseBias, ShotType, StyleMod
 
 const styleBlocks: Record<StyleMode, string> = {
   lifestyle: [
-    "instagram influencer lifestyle photo",
-    "soft attractive vibe",
-    "girl next door aesthetic",
-    "candid lifestyle moment",
-    "casual moment",
+    "realistic instagram lifestyle photo",
+    "clean daylight film realism",
+    "candid editorial lifestyle moment",
     "casual instagram snapshot",
     "slightly imperfect",
     "natural sunlight",
+    "soft natural shadows",
     "realistic skin texture",
     "tiny skin details",
+    "understated styling",
     "natural feminine silhouette",
     "realistic body proportions",
+    "avoid glamour polish",
   ].join(", "),
   selfie: [
-    "realistic instagram selfie photo",
+    "realistic iphone selfie photo",
     "natural personal-post energy",
     "casual snapshot",
     "intimate but everyday mood",
     "slightly imperfect",
+    "clean film realism",
     "natural skin texture",
     "tiny skin details",
-    "soft flattering light",
+    "soft daylight",
+    "understated styling",
     "realistic body proportions",
   ].join(", "),
   sensual: [
@@ -31,13 +34,15 @@ const styleBlocks: Record<StyleMode, string> = {
     "soft sensual vibe",
     "confident feminine energy",
     "alluring but natural expression",
-    "soft glamour lifestyle photo",
-    "warm sunlight",
+    "clean film realism",
+    "soft natural daylight or city dusk light",
     "natural skin texture",
     "tiny skin details",
     "subtle body curve",
+    "understated styling",
     "realistic body proportions",
     "tasteful styling",
+    "avoid glamour studio polish",
   ].join(", "),
 };
 
@@ -130,7 +135,7 @@ function getLookProfileBlock(character: Character) {
 }
 
 function getSceneBlock(scene: SceneTemplate) {
-  return scene.promptTemplate;
+  return `${scene.promptTemplate}, candid environmental context, understated editorial realism`;
 }
 
 function getFluxStreetSceneBlock(scene: SceneTemplate) {
@@ -141,6 +146,26 @@ function getFluxStreetSceneBlock(scene: SceneTemplate) {
     "candid street fashion moment",
     scene.promptTemplate,
   ].join(", ");
+}
+
+function getColorGradeBlock(scene: SceneTemplate, mode: StyleMode) {
+  if (scene.id === "rooftop-evening" || scene.id === "casual-dinner") {
+    return "clean evening tones, city-light bokeh, realistic contrast, subtle cinematic night softness";
+  }
+
+  if (scene.id === "rainy-window" || scene.id === "mirror-selfie") {
+    return "soft muted indoor tones, natural window light falloff, gentle film softness";
+  }
+
+  if (scene.id === "beach-walk" || scene.id === "poolside" || scene.id === "sunset-balcony") {
+    return "golden daylight with restrained saturation, warm skin tones, realistic highlights";
+  }
+
+  if (mode === "selfie") {
+    return "soft daylight neutrals, clean skin tones, slightly imperfect phone-photo realism";
+  }
+
+  return "low saturation daylight neutrals, gentle film softness, realistic contrast, clean natural color";
 }
 
 function getFluxStreetReferenceBlock(character: Character) {
@@ -533,6 +558,7 @@ export function composeImagePrompt(input: {
     `Scene: ${sceneBlock}.`,
     `Pose: ${getPoseBlock(scene, variantSeed, mode, sensualPoseBias)}.`,
     `Camera: ${getCameraBlock(scene, variantSeed, mode)}.`,
+    `Color grade: ${getColorGradeBlock(scene, mode)}.`,
     `Shot: ${getShotBlock(shotType)}.`,
     `Consistency: ${consistencyBlock}.`,
     `Identity lock: ${getIdentityLockBlock(character)}.`,
