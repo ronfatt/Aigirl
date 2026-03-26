@@ -17,6 +17,7 @@ export type PostingTone =
   | "playful"
   | "elegant minimal";
 export type IdentityLockStrength = "balanced" | "high" | "max";
+export type IdentityReviewLevel = "stable" | "review" | "high-risk";
 
 export interface Character {
   id: string;
@@ -103,12 +104,22 @@ export interface DashboardPayload {
   warning?: string | null;
 }
 
+export interface IdentityReview {
+  level: IdentityReviewLevel;
+  confidence: number;
+  summary: string;
+  recommendation: string;
+}
+
 export interface GenerationHistoryItem extends Generation {
   characterName: string;
   sceneTitle: string;
   previewImageUrl: string | null;
   linkedPostId: string | null;
   linkedPostStatus: PostStatus | null;
+  identityLockStrength?: IdentityLockStrength;
+  referenceSlotCount?: number;
+  identityReview?: IdentityReview;
 }
 
 export interface CharacterInput {

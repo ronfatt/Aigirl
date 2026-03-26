@@ -13,6 +13,7 @@ import { SceneSelector } from "@/components/SceneSelector";
 import { VideoDraftBuilder } from "@/components/VideoDraftBuilder";
 import { promptPresets } from "@/lib/prompt-presets";
 import { getContentMixSummary, getSceneRatioHint } from "@/lib/content-strategy";
+import { buildIdentityReview } from "@/lib/identity-review";
 import { sceneLibrary } from "@/lib/scene-library";
 import {
   Character,
@@ -247,6 +248,15 @@ export function GenerateWorkspace({
         currentCharacter.bodyReferenceImageUrl,
       ].filter(Boolean).length
     : 0;
+  const currentIdentityReview =
+    currentCharacter && generation
+      ? buildIdentityReview({
+          character: currentCharacter,
+          mode: generation.mode,
+          shotType: generation.shotType,
+          qualityTags: generation.qualityTags,
+        })
+      : null;
 
   function applyPreset(presetId: string) {
     const preset = promptPresets.find((item) => item.id === presetId);
@@ -980,6 +990,24 @@ export function GenerateWorkspace({
               </p>
             </div>
 
+            {currentIdentityReview ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Identity review</p>
+                    <p className="mt-1 text-sm text-zinc-300">{currentIdentityReview.summary}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-xs uppercase tracking-[0.18em] ${getIdentityLevelClassName(currentIdentityReview.level)}`}>
+                      {currentIdentityReview.level}
+                    </p>
+                    <p className="mt-1 text-sm text-white">{currentIdentityReview.confidence}% confidence</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-zinc-400">{currentIdentityReview.recommendation}</p>
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap gap-2">
               {(["face stable", "off-identity risk", "framing good", "background clear", "publish-ready"] as QualityTag[]).map((tag) => {
                 const active = generation.qualityTags.includes(tag);
@@ -1194,6 +1222,11 @@ export function GenerateWorkspace({
                         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                           {item.mode} • {item.shotType}
                         </p>
+                        {item.identityReview ? (
+                          <p className={`mt-2 text-[11px] uppercase tracking-[0.18em] ${getIdentityLevelClassName(item.identityReview.level)}`}>
+                            {item.identityReview.level} • {item.identityReview.confidence}% identity confidence
+                          </p>
+                        ) : null}
                       </div>
                       <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{item.status}</p>
                     </div>
@@ -1201,6 +1234,9 @@ export function GenerateWorkspace({
                     <p className="text-sm text-zinc-400">
                       Post: {item.linkedPostId ? `${item.linkedPostId} • ${item.linkedPostStatus}` : "Not created yet"}
                     </p>
+                    {item.identityReview ? (
+                      <p className="text-xs text-zinc-500">{item.identityReview.recommendation}</p>
+                    ) : null}
                     {item.qualityTags.length ? (
                       <div className="flex flex-wrap gap-2 pt-1">
                         {item.qualityTags.map((tag) => (
@@ -1343,6 +1379,18 @@ function LinkCard({
       <p className="mt-1 text-xs text-zinc-400">{description}</p>
     </Link>
   );
+}
+
+function getIdentityLevelClassName(level: "stable" | "review" | "high-risk") {
+  if (level === "stable") {
+    return "text-emerald-300";
+  }
+
+  if (level === "review") {
+    return "text-amber-200";
+  }
+
+  return "text-rose-300";
 }
 
 const inputClassName =

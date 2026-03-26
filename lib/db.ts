@@ -20,6 +20,7 @@ import {
 } from "@/lib/types";
 import { sceneLibrary } from "@/lib/scene-library";
 import { buildWeeklyPlan } from "@/lib/content-strategy";
+import { getIdentityRiskScore } from "@/lib/identity-review";
 import { composeImagePrompt } from "@/lib/prompts";
 import { generatePersonaImages } from "@/lib/image-generator";
 import { generateCaptionOptions } from "@/lib/caption-generator";
@@ -1594,35 +1595,31 @@ function getPromptStrengthForCharacter(character: Character, inputStrength?: Ide
   return 0.82;
 }
 
-function getReferenceSlotCount(character: Character) {
-  return [
-    character.masterReferenceImageUrl,
-    character.faceReferenceImageUrl,
-    character.styleReferenceImageUrl,
-    character.bodyReferenceImageUrl,
-  ].filter(Boolean).length;
-}
-
 function buildQualityTags(input: {
   character: Character;
   sceneTemplateId: string;
   mode: StyleMode;
   shotType: ShotType;
   selectedImageUrl?: string | null;
+  customPrompt?: string;
 }): QualityTag[] {
-  const tags: QualityTag[] = ["face stable", "background clear"];
-  const referenceSlotCount = getReferenceSlotCount(input.character);
-  const identityLock = input.character.identityLockStrength;
+  const tags: QualityTag[] = ["background clear"];
+  const riskScore = getIdentityRiskScore({
+    character: input.character,
+    mode: input.mode,
+    shotType: input.shotType,
+    customPromptUsed: Boolean(input.customPrompt?.trim()),
+  });
 
   if (input.shotType !== "close") {
     tags.push("framing good");
   }
 
-  if (
-    identityLock === "balanced" &&
-    referenceSlotCount <= 1 &&
-    (input.mode === "sensual" || input.shotType === "close")
-  ) {
+  if (riskScore <= 44) {
+    tags.push("face stable");
+  }
+
+  if (riskScore >= 45) {
     tags.push("off-identity risk");
   }
 
@@ -1689,6 +1686,7 @@ export async function createGeneration(input: GenerateImageInput) {
         sceneTemplateId: scene.id,
         mode,
         shotType,
+        customPrompt: input.customPrompt,
       }),
       isFavorite: false,
       isArchived: false,
@@ -1713,6 +1711,7 @@ export async function createGeneration(input: GenerateImageInput) {
       sceneTemplateId: scene.id,
       mode,
       shotType,
+      customPrompt: input.customPrompt,
     }),
   });
 

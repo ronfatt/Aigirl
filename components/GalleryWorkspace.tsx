@@ -393,6 +393,11 @@ export function GalleryWorkspace() {
                   <p>
                     {item.linkedPostId ? `Export pack: ${item.linkedPostStatus ?? "draft"}` : "Export pack: not created"}
                   </p>
+                  {item.identityReview ? (
+                    <p className={getIdentityLevelClassName(item.identityReview.level)}>
+                      {item.identityReview.level} • {item.identityReview.confidence}% identity confidence
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -463,3 +468,15 @@ const batchButtonClassName =
 
 const dangerButtonClassName =
   "rounded-full border border-rose-300/20 bg-rose-300/10 px-3 py-1.5 text-xs text-rose-200 transition hover:bg-rose-300/15";
+
+function getIdentityLevelClassName(level: "stable" | "review" | "high-risk") {
+  if (level === "stable") {
+    return "text-emerald-300";
+  }
+
+  if (level === "review") {
+    return "text-amber-200";
+  }
+
+  return "text-rose-300";
+}
