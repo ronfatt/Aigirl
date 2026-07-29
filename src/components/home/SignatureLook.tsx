@@ -1,0 +1,6 @@
+"use client";
+import Image from "next/image";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+export function SignatureLook() { const root = useRef<HTMLElement>(null); useEffect(() => { if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; gsap.registerPlugin(ScrollTrigger); const ctx = gsap.context(() => { gsap.fromTo(".signature-mask", { clipPath: "inset(0 25%)" }, { clipPath: "inset(0 0%)", scrollTrigger: { trigger: root.current, start: "top 80%", end: "center center", scrub: 1 } }); gsap.fromTo(".signature-title", { scale: .82 }, { scale: 1, scrollTrigger: { trigger: root.current, start: "top 75%", end: "bottom 75%", scrub: 1 } }); }, root); return () => ctx.revert(); }, []); return <section ref={root} className="relative h-[90svh] overflow-hidden bg-black text-ivory"><div className="signature-mask absolute inset-0"><Image src="/images/collections/noir.svg" alt="Signature black botanical couture look" fill sizes="100vw" className="object-cover object-center"/><div className="absolute inset-0 bg-black/35"/></div><h2 className="signature-title absolute inset-x-5 top-1/2 -translate-y-1/2 text-center font-display text-[clamp(3.4rem,9vw,10rem)] uppercase leading-[.78] tracking-[-.05em]">A new language<br/>of Malaysian luxury.</h2></section>; }

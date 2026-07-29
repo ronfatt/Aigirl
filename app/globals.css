@@ -2,30 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
-}
-
-html,
-body {
-  min-height: 100%;
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 32%),
-    #09090b;
-  color: #f4f4f5;
-}
-
-body {
-  margin: 0;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
+:root { --color-black:#090909; --color-charcoal:#151515; --color-ivory:#f1ede5; --color-warm-white:#faf8f3; --color-muted-gray:#a6a29b; --color-deep-red:#6e1118; --color-batik-red:#9b2028; --color-bronze:#8c6947; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; background:#090909; }
+body { margin:0; overflow-x:hidden; background:#090909; color:#f1ede5; font-family:var(--font-sans),sans-serif; text-rendering:optimizeLegibility; }
+::selection { background:#9b2028; color:#fff; }
+a { color:inherit; text-decoration:none; }
+button,input,textarea,select { font:inherit; }
+button,a { -webkit-tap-highlight-color:transparent; }
+button { cursor:pointer; }
+.font-display { font-family:var(--font-display),serif; }
+.wordmark { font-weight:700; letter-spacing:.18em; }
+.nav-link { font-size:10px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; transition:color .3s; }
+.nav-link:hover { color:#fff; }
+.label { margin-bottom:.5rem; font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(9,9,9,.45); }
+:focus-visible { outline:2px solid currentColor; outline-offset:5px; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media (pointer:fine) and (prefers-reduced-motion:no-preference) { body { cursor:none; } a,button { cursor:none; } }
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }

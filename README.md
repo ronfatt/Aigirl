@@ -1,91 +1,94 @@
-# AI Persona Publisher
+# Batik NXT
 
-AI Persona Publisher is a Next.js 15 MVP for managing AI lifestyle personas, generating draft visuals, creating short captions, and preparing content for Facebook and Instagram publishing.
+## 1. Project Overview
 
-## Stack
+Batik NXT is a mobile-first editorial fashion website for a contemporary Malaysian luxury concept brand. It presents batik as a living design language through collections, look details, craft studies, journal stories and private enquiries. This release contains no prices, cart, checkout or fabricated inventory.
 
-- Next.js 15 App Router
-- TypeScript
-- Tailwind CSS
-- Vercel-ready configuration
-- Mock-first service abstractions for OpenAI, Replicate, Supabase Storage, and Meta Graph API
+## 2. Tech Stack
 
-## Getting started
+- Next.js 16 App Router, React 19 and strict TypeScript
+- Tailwind CSS design tokens
+- GSAP + ScrollTrigger for large scroll narratives
+- Motion for overlays, filtering and UI transitions
+- React Hook Form + Zod for validated forms
+- Lucide React icons and `next/image`
+- Cormorant Garamond + Inter through `next/font/google`
 
-1. Install dependencies:
+## 3. Installation
 
 ```bash
 npm install
 ```
 
-2. Copy environment variables:
+Node.js 20 or newer is recommended.
 
-```bash
-cp .env.example .env.local
-```
-
-3. Start the app:
+## 4. Development Command
 
 ```bash
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000)
+Open `http://localhost:3000`.
 
-## Environment variables
+## 5. Production Build
 
-All secrets are read server-side only.
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm start
+```
 
-- `OPENAI_API_KEY`: connect a real caption generation provider
-- `OPENAI_CAPTION_MODEL`: optional, defaults to `gpt-4o-mini`
-- `REPLICATE_API_TOKEN`: connect Replicate Flux or another image provider
-- `REPLICATE_MODEL`: optional, defaults to `black-forest-labs/flux-dev`
-- `META_ACCESS_TOKEN`: Meta Graph API access token
-- `META_IG_BUSINESS_ID`: Instagram Business account ID
-- `META_FB_PAGE_ID`: Facebook Page ID
-- `DATABASE_URL`: Postgres or Supabase connection string
-- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY`: server-side key for uploading generated assets to Storage
-- `SUPABASE_STORAGE_BUCKET`: optional, defaults to `persona-assets`
+## 6. Folder Structure
 
-## Architecture notes
+```text
+app/                     Routes, metadata, API mocks, errors and SEO files
+src/components/          Layout, home, collection, look, journal, forms, media and motion
+src/content/en.ts        Shared English brand copy
+src/data/                Collections, looks, journal, navigation and settings
+src/lib/repositories/    Local-data repository boundary for a future CMS
+src/types/               Media, SEO and content domain types
+public/images/           Local, proportion-safe image assets by content category
+```
 
-- `lib/db.ts` is an in-memory repository so the app works locally without external services.
-- Route handlers already call the repository and service abstractions, so replacing the mock database with Supabase or Postgres is isolated work.
-- `lib/image-generator.ts` contains the hook point for Replicate Flux.
-- `lib/replicate.ts` wraps the Replicate prediction lifecycle and keeps the provider isolated.
-- `lib/caption-generator.ts` generates three caption options with OpenAI and falls back to mock captions when the API key is missing.
-- `lib/openai.ts` holds the shared OpenAI client setup.
-- `lib/storage.ts` uploads generated assets into Supabase Storage when configured.
-- `lib/meta-publisher.ts` contains the hook point for the Meta Graph API publish flow.
-- If Meta credentials are missing, publishing falls back to mock responses so local development still works.
-- If Supabase Storage credentials are missing, generated image URLs fall back to the source URLs so local development still works.
+Legacy AI studio pages and APIs that predated this website remain in the repository and were not deleted. They are not linked from the Batik NXT public navigation.
 
-## Routes
+## 7. Replacing Images
 
-- `GET /api/dashboard`
-- `GET /api/characters`
-- `POST /api/characters`
-- `PUT /api/characters/[id]`
-- `POST /api/generate-image`
-- `POST /api/generate-caption`
-- `GET /api/posts`
-- `PUT /api/posts/[id]`
-- `POST /api/publish`
+Replace files under `public/images/` or change paths in `src/data`. Keep declared dimensions, aspect ratio, alt text and focal point accurate. `ResponsiveImage` supplies responsive sizing, lazy loading and a local fallback. Use JPG, PNG, WebP or AVIF production photography; reserve `priority` for the first meaningful image.
 
-## Seed data
+## 8. Editing Brand Content
 
-The app ships with:
+Global brand details and placeholder emails live in `src/data/settings.ts`. Shared home copy lives in `src/content/en.ts`. Collection, look and journal text lives in typed records under `src/data`. The locale list already reserves `en`, `zh` and `ms`.
 
-- 20 seeded scene templates in [`lib/scene-library.ts`](/Users/rms/Desktop/Ai Project/AiGirl/lib/scene-library.ts)
-- 1 seeded persona
-- 1 seeded approved generation
-- 1 seeded draft post
+## 9. Adding a Collection
 
-## Deployment
+Add a complete `Collection` record to `src/data/collections.ts`, use a unique `id` and `slug`, add image assets, and list valid look IDs in `lookIds`. Published records automatically appear in repositories, static routes, search and the sitemap.
 
-This project is ready for Vercel deployment.
+## 10. Adding a Look
 
-- Add environment variables in the Vercel project settings
-- Deploy directly from the repository
-- `vercel.json` includes a starter cron definition for future automation work
+Add the full look specification in `src/data/looks.ts`, reference an existing `collectionId`, and update that collection's `lookIds`. Every image needs descriptive alt text and dimensions. The slug becomes `/looks/[slug]`.
+
+## 11. Adding a Journal Article
+
+Add a `JournalArticle` to `src/data/journal.ts`. Content supports paragraph, heading, quote and inline image blocks. Use ISO dates and valid related article IDs.
+
+## 12. Form Integration
+
+`/api/contact` and `/api/newsletter` validate requests and return explicit mock responses. They do not send email or persist personal data. Replace route internals with Resend, Mailchimp or database operations while retaining the client payload and Zod boundary.
+
+## 13. Environment Variables
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://your-production-domain.com
+```
+
+Future provider keys must be server-only (for example `RESEND_API_KEY`) and must never use the `NEXT_PUBLIC_` prefix.
+
+## 14. Deployment
+
+Set `NEXT_PUBLIC_SITE_URL`, run the production checks, and import the repository into Vercel. No custom build command is required. Replace placeholder legal text, email addresses and social profile URLs before public launch.
+
+## 15. Future CMS Integration
+
+Pages use functions in `src/lib/repositories` instead of raw arrays. Replace repository internals with Sanity, Strapi, Supabase or PostgreSQL queries while preserving return types. The domain can grow into inventory, accounts, wishlists, appointments, made-to-measure requests, event registration and a buyer portal without rewriting page components.

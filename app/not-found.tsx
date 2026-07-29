@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound(){return <main className="flex min-h-[100svh] flex-col items-center justify-center bg-black px-5 text-center text-ivory"><p className="text-[10px] uppercase tracking-[.22em] text-white/45">404 · Archive error</p><h1 className="mt-7 font-display text-[clamp(4rem,10vw,10rem)] uppercase leading-[.78]">The look<br/>could not be found.</h1><div className="mt-10 flex gap-6 text-[10px] uppercase tracking-[.2em]"><Link href="/">Return Home</Link><Link href="/collections">View Collections</Link></div></main>}
